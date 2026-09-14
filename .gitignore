@@ -1,0 +1,24 @@
+# بيئة/أسرار — لا يُرفع أبدًا
+.env
+.env.*
+!.env.example
+
+# تبعيات
+node_modules/
+package-lock.json.bak
+
+# Vercel
+.vercel
+
+# سجلات
+npm-debug.log*
+*.log
+
+# نظام التشغيل/المحرر
+.DS_Store
+.vscode/
+.idea/
+
+# أي أصول مرفوعة من المستخدمين محليًا أثناء التطوير (لا تُرفع لـGit؛ مكانها Supabase Storage)
+/uploads/
+/tmp/

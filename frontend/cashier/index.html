@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شاشة الكاشير | قهوجي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<script src="../assets/supabase-config.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --paper: #fff8ec; --paper-warm: #ffefd8; --ink: #1c1006; --ink-soft: #6b5843;
+    --red: #ff431a; --red-dark: #c22400; --yellow: #ffc229; --green: #1f8a4c; --gray: #9a8a76;
+    --line: #e7d3b4;
+    --font-display: 'Lalezar', sans-serif; --font-body: 'Tajawal', sans-serif;
+    --hard: 5px 5px 0 var(--ink); --hard-sm: 3px 3px 0 var(--ink);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: var(--font-body); background: var(--paper); color: var(--ink);
+    min-height:100vh; -webkit-font-smoothing:antialiased;
+    background-image: radial-gradient(var(--line) 1.3px, transparent 1.3px); background-size:26px 26px;
+  }
+  h1,h2,h3,h4 { font-family: var(--font-display); font-weight:400; }
+  button, input, select { font-family: var(--font-body); }
+  .hidden { display:none !important; }
+
+  /* ===== تسجيل الدخول ===== */
+  #loginScreen { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
+  .login-card { background:white; border:2.5px solid var(--ink); border-radius:18px; box-shadow: var(--hard); padding:2.5rem; width:100%; max-width:380px; }
+  .login-card .logo-mark { width:46px; height:46px; background:var(--red); border:2.5px solid var(--ink); border-radius:11px; display:flex; align-items:center; justify-content:center; color:white; margin-bottom:1.25rem; transform:rotate(-4deg); }
+  .login-card h1 { font-size:1.6rem; margin-bottom:0.4rem; }
+  .login-card p.sub { color:var(--ink-soft); font-size:0.9rem; margin-bottom:1.75rem; font-weight:500; }
+  .field { margin-bottom:1.1rem; }
+  .field label { display:block; font-size:0.85rem; font-weight:800; margin-bottom:0.4rem; }
+  .field input, .field select { width:100%; padding:0.75rem 0.9rem; border:2px solid var(--ink); border-radius:10px; font-size:0.95rem; background:var(--paper); color:var(--ink); font-weight:600; }
+  .field input:focus, .field select:focus { outline:3px solid var(--red); outline-offset:1px; }
+
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:0.5rem; padding:0.75rem 1.3rem; font-weight:800; font-size:0.85rem; border-radius:10px; border:2.5px solid var(--ink); cursor:pointer; transition:all 0.15s ease; text-decoration:none; }
+  .btn:active { transform:translate(3px,3px); box-shadow:none !important; }
+  .btn-primary { background:var(--red); color:white; box-shadow:var(--hard-sm); }
+  .btn-primary:hover { transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--ink); }
+  .btn-dark { background:var(--ink); color:var(--paper); box-shadow:var(--hard-sm); }
+  .btn-green { background:var(--green); color:white; box-shadow:var(--hard-sm); }
+  .btn-ghost { background:transparent; color:var(--ink); }
+  .btn-ghost:hover { background:var(--paper-warm); }
+  .btn-block { width:100%; }
+  .btn[disabled] { opacity:0.5; cursor:not-allowed; pointer-events:none; }
+
+  .error-banner { background:#ffe0d6; border:2px solid var(--red-dark); color:var(--red-dark); font-weight:700; padding:0.8rem 1rem; border-radius:10px; margin-bottom:1.1rem; font-size:0.85rem; }
+
+  /* ===== التطبيق ===== */
+  header.topbar { position:sticky; top:0; z-index:50; background:var(--paper); border-bottom:3px solid var(--ink); display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.5rem; flex-wrap:wrap; gap:0.75rem; }
+  .topbar .brand { display:flex; align-items:center; gap:0.6rem; font-family:var(--font-display); font-size:1.3rem; }
+  .topbar .brand .logo-mark { width:30px; height:30px; background:var(--red); border:2px solid var(--ink); border-radius:8px; display:flex; align-items:center; justify-content:center; color:white; transform:rotate(-4deg); }
+  .topbar .who { font-size:0.8rem; color:var(--ink-soft); font-weight:700; }
+  .conn-status { display:inline-flex; align-items:center; gap:0.4rem; font-size:0.78rem; font-weight:800; padding:0.3rem 0.7rem; border-radius:100px; border:2px solid var(--ink); }
+  .conn-status .dot { width:6px; height:6px; border-radius:50%; }
+  .conn-live { background:#c8f0d6; color:var(--green); } .conn-live .dot { background:var(--green); }
+  .conn-down { background:#ffd9cf; color:var(--red-dark); } .conn-down .dot { background:var(--red-dark); }
+
+  main { max-width:1400px; margin:0 auto; padding:1.5rem; }
+  #boardError { margin-bottom:1rem; }
+
+  .board { display:grid; grid-template-columns: repeat(3, 1fr); gap:1.5rem; align-items:start; }
+  .column { background:var(--paper-warm); border:2.5px solid var(--ink); border-radius:16px; padding:1.1rem; min-height:200px; }
+  .column-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+  .column-head h2 { font-size:1.25rem; }
+  .col-count { background:var(--ink); color:var(--paper); font-weight:800; font-size:0.78rem; padding:0.2rem 0.6rem; border-radius:100px; }
+  .col-empty { text-align:center; color:var(--ink-soft); font-weight:600; font-size:0.85rem; padding:2rem 1rem; }
+
+  .order-list { display:flex; flex-direction:column; gap:1rem; }
+
+  /* ===== بطاقة الطلب (تذكرة) ===== */
+  .order-ticket { position:relative; background:white; border:2.5px solid var(--ink); border-radius:14px; box-shadow:var(--hard-sm); padding:1.25rem 1.1rem 1.1rem; }
+  .order-ticket.is-new { animation: flashIn 1.4s ease; }
+  @keyframes flashIn { 0%{ box-shadow:0 0 0 4px var(--yellow), var(--hard-sm);} 100%{ box-shadow:var(--hard-sm);} }
+
+  .ot-head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px dashed var(--line); padding-bottom:0.7rem; margin-bottom:0.7rem; }
+  .ot-head h4 { font-size:1.1rem; }
+  .ot-table { font-size:0.78rem; color:var(--ink-soft); font-weight:700; }
+  .ot-time { font-size:0.75rem; font-weight:800; background:var(--paper-warm); border:1.5px solid var(--ink); border-radius:8px; padding:0.2rem 0.5rem; white-space:nowrap; }
+  .ot-time.is-late { background:#ffd9cf; color:var(--red-dark); }
+
+  .ot-items { list-style:none; font-size:0.85rem; font-weight:600; margin-bottom:0.6rem; }
+  .ot-items li { display:flex; justify-content:space-between; padding:0.18rem 0; color:var(--ink-soft); }
+  .ot-items li span:first-child { color:var(--ink); }
+
+  .ot-total { display:flex; justify-content:space-between; align-items:center; border-top:2px dashed var(--line); padding-top:0.6rem; margin-top:0.4rem; }
+  .ot-total strong { font-family:var(--font-display); font-size:1.2rem; color:var(--red-dark); }
+
+  .ot-badges { display:flex; gap:0.4rem; margin-top:0.6rem; flex-wrap:wrap; }
+  .ot-badge { font-size:0.72rem; font-weight:800; padding:0.22rem 0.55rem; border-radius:100px; border:1.5px solid var(--ink); }
+  .ot-badge-ready { background:#c8f0d6; color:var(--green); }
+  .ot-badge-waiting { background:var(--yellow); }
+  .ot-badge-paid { background:#c8f0d6; color:var(--green); }
+
+  .ot-actions { display:flex; gap:0.5rem; margin-top:0.85rem; }
+  .ot-actions .btn { flex:1; }
+
+  .spinner-text { text-align:center; padding:2rem; color:var(--ink-soft); font-weight:700; }
+
+  /* ===== نافذة الدفع ===== */
+  .modal-overlay { position:fixed; inset:0; background:rgba(28,16,6,0.55); z-index:200; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
+  .modal { background:var(--paper); border:2.5px solid var(--ink); border-radius:18px; box-shadow:var(--hard); width:100%; max-width:380px; padding:2rem; }
+  .modal h3 { font-size:1.3rem; margin-bottom:1rem; }
+  .modal .ot-total { margin-bottom:1.25rem; }
+  .modal-actions { display:flex; gap:0.75rem; margin-top:1.5rem; }
+  .modal-actions .btn { flex:1; }
+
+  @media (max-width: 980px) { .board { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ===================== تسجيل الدخول ===================== -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="logo-mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 10H20L18 20H6L4 10Z"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg></div>
+    <h1>شاشة الكاشير</h1>
+    <p class="sub">سجّل دخولك لاستقبال طلبات مطعمك</p>
+    <div id="loginError"></div>
+    <form id="loginForm">
+      <div class="field"><label for="loginEmail">البريد الإلكتروني</label><input type="email" id="loginEmail" required autocomplete="username"></div>
+      <div class="field"><label for="loginPassword">كلمة المرور</label><input type="password" id="loginPassword" required autocomplete="current-password"></div>
+      <button type="submit" class="btn btn-primary btn-block" id="loginBtn">دخول</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== التطبيق ===================== -->
+<div id="app" class="hidden">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo-mark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 10H20L18 20H6L4 10Z"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg></span>
+      <span id="restaurantName">—</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:0.9rem;">
+      <span class="conn-status conn-down" id="connStatus"><span class="dot"></span> يتصل...</span>
+      <span class="who" id="whoAmI"></span>
+      <button class="btn btn-ghost" id="logoutBtn">خروج</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="boardError"></div>
+    <div class="board">
+      <div class="column">
+        <div class="column-head"><h2>بانتظار التأكيد</h2><span class="col-count" id="countPending">0</span></div>
+        <div class="order-list" id="listPending"><div class="spinner-text">جاري التحميل...</div></div>
+      </div>
+      <div class="column">
+        <div class="column-head"><h2>قيد التحضير</h2><span class="col-count" id="countConfirmed">0</span></div>
+        <div class="order-list" id="listConfirmed"><div class="spinner-text">جاري التحميل...</div></div>
+      </div>
+      <div class="column">
+        <div class="column-head"><h2>خلصت اليوم</h2><span class="col-count" id="countDone">0</span></div>
+        <div class="order-list" id="listDone"><div class="spinner-text">جاري التحميل...</div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="modalRoot"></div>
+
+<script>
+// ======================================================================
+// إعدادات — SUPABASE_URL/SUPABASE_ANON_KEY تُقرأ من ../assets/supabase-config.js
+// (عدّلهم هناك مرّة وحدة، بيصيرو صالحين لكل صفحات الـFrontend).
+// ======================================================================
+const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+  // بلا حفظ الجلسة بـlocalStorage عن قصد — نفس القرار الأمني الأصلي لهذه الشاشة
+  // (توكن الدخول بالذاكرة بس، يعني تسجيل خروج تلقائي عند تحديث الصفحة).
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+let CURRENT_ADMIN = null;    // { id, email, role, restaurantId, restaurantName }
+let ORDERS = new Map();      // id -> order
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+function showError(container, message) { container.innerHTML = `<div class="error-banner">${escapeHtml(message)}</div>`; }
+function clearError(container) { container.innerHTML = ""; }
+
+// ---------------------------------------------------------------------
+// تسجيل الدخول عبر Supabase Auth مباشرة (بدل bridge JWT من Node API القديم).
+// بعد نجاح الدخول، نتأكد إن هذا الحساب فعلاً مرتبط بسطر restaurant_admins
+// (owner أو cashier)، ونجيب اسم/حالة مطعمه — تمامًا متل ما كان الـNode القديم
+// يرجعهم ضمن { admin } بجسم استجابة تسجيل الدخول.
+// ---------------------------------------------------------------------
+$("#loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("#loginBtn");
+  const errBox = $("#loginError");
+  clearError(errBox);
+  btn.disabled = true; btn.textContent = "جاري الدخول...";
+
+  try {
+    const email = $("#loginEmail").value.trim();
+    const password = $("#loginPassword").value;
+
+    const { error: signInError } = await sb.auth.signInWithPassword({ email, password });
+    if (signInError) throw new Error("فشل تسجيل الدخول: " + signInError.message);
+
+    const { data: staffRow, error: staffError } = await sb
+      .from("restaurant_admins")
+      .select("id, email, role, restaurant_id, restaurants(name, status)")
+      .maybeSingle();
+    if (staffError) throw new Error(staffError.message);
+    if (!staffRow) {
+      await sb.auth.signOut();
+      throw new Error("هذا الحساب غير مرتبط بأي مطعم — تواصل مع إدارة المنصة");
+    }
+    if (!["trial", "active"].includes(staffRow.restaurants?.status)) {
+      await sb.auth.signOut();
+      throw new Error("حساب المطعم موقوف أو ملغي حاليًا");
+    }
+
+    CURRENT_ADMIN = {
+      id: staffRow.id,
+      email: staffRow.email,
+      role: staffRow.role,
+      restaurantId: staffRow.restaurant_id,
+      restaurantName: staffRow.restaurants?.name,
+    };
+
+    enterApp();
+  } catch (err) {
+    showError(errBox, err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "دخول";
+  }
+});
+
+$("#logoutBtn").addEventListener("click", async () => {
+  sb.removeAllChannels();
+  await sb.auth.signOut();
+  CURRENT_ADMIN = null; ORDERS.clear();
+  $("#app").classList.add("hidden");
+  $("#loginScreen").classList.remove("hidden");
+  $("#loginForm").reset();
+});
+
+function enterApp() {
+  $("#loginScreen").classList.add("hidden");
+  $("#app").classList.remove("hidden");
+  $("#restaurantName").textContent = CURRENT_ADMIN.restaurantName || "مطعمك";
+  $("#whoAmI").textContent = `${CURRENT_ADMIN.email} · ${CURRENT_ADMIN.role === "owner" ? "مالك" : "كاشير"}`;
+  loadOrders();
+  subscribeRealtime();
+  setInterval(rerenderTimers, 30000); // تحديث عدّاد الوقت كل نص دقيقة
+}
+
+// ---------------------------------------------------------------------
+// تحميل الطلبات الحالية
+// ---------------------------------------------------------------------
+async function loadOrders() {
+  clearError($("#boardError"));
+  try {
+    const { data, error } = await sb
+      .from("orders")
+      .select("*, restaurant_tables(table_number)")
+      .eq("restaurant_id", CURRENT_ADMIN.restaurantId)
+      .in("status", ["pending", "confirmed"])
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+
+    ORDERS.clear();
+    (data || []).forEach((o) => ORDERS.set(o.id, o));
+
+    // آخر 20 طلب "خلص" اليوم — بس للمطابقة والجرد، مو للتعديل
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+    const { data: doneData } = await sb
+      .from("orders")
+      .select("*, restaurant_tables(table_number)")
+      .eq("restaurant_id", CURRENT_ADMIN.restaurantId)
+      .eq("status", "done")
+      .gte("created_at", startOfDay.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(20);
+    (doneData || []).forEach((o) => ORDERS.set(o.id, o));
+
+    renderBoard();
+  } catch (err) {
+    showError($("#boardError"), "تعذّر تحميل الطلبات: " + err.message);
+  }
+}
+
+// ---------------------------------------------------------------------
+// الاشتراك اللحظي (Realtime)
+// ---------------------------------------------------------------------
+function subscribeRealtime() {
+  const channel = sb
+    .channel("orders-" + CURRENT_ADMIN.restaurantId)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "orders", filter: `restaurant_id=eq.${CURRENT_ADMIN.restaurantId}` },
+      (payload) => {
+        if (payload.eventType === "DELETE") {
+          ORDERS.delete(payload.old.id);
+        } else {
+          const existing = ORDERS.get(payload.new.id);
+          ORDERS.set(payload.new.id, { ...existing, ...payload.new, _isNew: payload.eventType === "INSERT" });
+        }
+        renderBoard();
+      }
+    )
+    .subscribe((status) => {
+      const el = $("#connStatus");
+      if (status === "SUBSCRIBED") {
+        el.className = "conn-status conn-live"; el.innerHTML = "<span class=\"dot\"></span> متصل لحظيًا";
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        el.className = "conn-status conn-down"; el.innerHTML = "<span class=\"dot\"></span> انقطع الاتصال";
+      }
+    });
+}
+
+// ---------------------------------------------------------------------
+// الرسم
+// ---------------------------------------------------------------------
+function timeAgo(iso) {
+  const mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+  return mins < 1 ? "الآن" : `منذ ${mins} د`;
+}
+
+function renderBoard() {
+  const all = [...ORDERS.values()];
+  const pending = all.filter((o) => o.status === "pending").sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+  const confirmed = all.filter((o) => o.status === "confirmed").sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+  const done = all.filter((o) => o.status === "done").sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+  $("#countPending").textContent = pending.length;
+  $("#countConfirmed").textContent = confirmed.length;
+  $("#countDone").textContent = done.length;
+
+  $("#listPending").innerHTML = pending.length ? pending.map(renderPendingCard).join("") : emptyState("ما في طلبات بانتظار التأكيد");
+  $("#listConfirmed").innerHTML = confirmed.length ? confirmed.map(renderConfirmedCard).join("") : emptyState("ما في طلبات قيد التحضير");
+  $("#listDone").innerHTML = done.length ? done.map(renderDoneCard).join("") : emptyState("ولا طلب خلص لهلق اليوم");
+
+  bindCardActions();
+}
+
+function emptyState(text) { return `<div class="col-empty">${escapeHtml(text)}</div>`; }
+
+function itemsHtml(items) {
+  return (items || []).map((it) => `<li><span>${escapeHtml(it.name)} × ${it.qty}</span><span>${Number(it.subtotal).toFixed(2)} د.أ</span></li>`).join("");
+}
+
+function renderPendingCard(o) {
+  const tableNum = o.restaurant_tables?.table_number ?? "؟";
+  return `
+    <div class="order-ticket ${o._isNew ? "is-new" : ""}" data-id="${o.id}">
+      <div class="ot-head">
+        <div><h4>طلب #${o.id}</h4><div class="ot-table">طاولة ${tableNum}</div></div>
+        <span class="ot-time">${timeAgo(o.created_at)}</span>
+      </div>
+      <ul class="ot-items">${itemsHtml(o.items)}</ul>
+      <div class="ot-total"><span>الإجمالي</span><strong>${Number(o.total).toFixed(2)} د.أ</strong></div>
+      <div class="ot-actions">
+        <button class="btn btn-primary act-confirm">تأكيد وإرسال للمطبخ</button>
+      </div>
+    </div>`;
+}
+
+function renderConfirmedCard(o) {
+  const tableNum = o.restaurant_tables?.table_number ?? "؟";
+  const isReady = !!o.ready_at;
+  const late = (Date.now() - new Date(o.created_at).getTime()) > 20 * 60000;
+  return `
+    <div class="order-ticket ${o._isNew ? "is-new" : ""}" data-id="${o.id}">
+      <div class="ot-head">
+        <div><h4>طلب #${o.id}</h4><div class="ot-table">طاولة ${tableNum}</div></div>
+        <span class="ot-time ${late ? "is-late" : ""}">${timeAgo(o.created_at)}</span>
+      </div>
+      <ul class="ot-items">${itemsHtml(o.items)}</ul>
+      <div class="ot-total"><span>الإجمالي</span><strong>${Number(o.total).toFixed(2)} د.أ</strong></div>
+      <div class="ot-badges">
+        ${isReady ? `<span class="ot-badge ot-badge-ready">✓ جاهز</span>` : `<span class="ot-badge ot-badge-waiting">قيد التحضير</span>`}
+      </div>
+      <div class="ot-actions">
+        ${!isReady ? `<button class="btn btn-dark act-ready">الطلب جاهز</button>` : ""}
+        <button class="btn btn-green act-close">إغلاق واستلام الدفع</button>
+      </div>
+    </div>`;
+}
+
+function renderDoneCard(o) {
+  const tableNum = o.restaurant_tables?.table_number ?? "؟";
+  return `
+    <div class="order-ticket" data-id="${o.id}" style="opacity:0.85">
+      <div class="ot-head">
+        <div><h4>طلب #${o.id}</h4><div class="ot-table">طاولة ${tableNum}</div></div>
+        <span class="ot-time">${new Date(o.created_at).toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"})}</span>
+      </div>
+      <div class="ot-total"><span>الإجمالي</span><strong>${Number(o.total).toFixed(2)} د.أ</strong></div>
+      <div class="ot-badges"><span class="ot-badge ot-badge-paid">✓ محصّل ${Number(o.cash_received ?? o.total).toFixed(2)} د.أ</span></div>
+    </div>`;
+}
+
+function rerenderTimers() { renderBoard(); }
+
+// ---------------------------------------------------------------------
+// إجراءات البطاقات
+// ---------------------------------------------------------------------
+function bindCardActions() {
+  $$(".act-confirm").forEach((btn) => btn.addEventListener("click", (e) => {
+    const id = e.target.closest(".order-ticket").dataset.id;
+    updateOrder(id, { status: "confirmed", confirmed_at: new Date().toISOString() });
+  }));
+  $$(".act-ready").forEach((btn) => btn.addEventListener("click", (e) => {
+    const id = e.target.closest(".order-ticket").dataset.id;
+    updateOrder(id, { ready_at: new Date().toISOString() });
+  }));
+  $$(".act-close").forEach((btn) => btn.addEventListener("click", (e) => {
+    const id = e.target.closest(".order-ticket").dataset.id;
+    openCloseOrderModal(id);
+  }));
+}
+
+async function updateOrder(id, patch) {
+  clearError($("#boardError"));
+  try {
+    const { error } = await sb.from("orders").update(patch).eq("id", id);
+    if (error) throw error;
+    // التحديث بيوصل تلقائيًا عبر الـRealtime subscription، ما بنحتاج نعيد التحميل يدويًا
+  } catch (err) {
+    showError($("#boardError"), "تعذّر تنفيذ الإجراء: " + err.message);
+  }
+}
+
+function openCloseOrderModal(id) {
+  const order = ORDERS.get(Number(id)) || ORDERS.get(id);
+  if (!order) return;
+  const root = $("#modalRoot");
+  root.innerHTML = `
+    <div class="modal-overlay">
+      <div class="modal">
+        <h3>إغلاق طلب #${order.id}</h3>
+        <div class="ot-total"><span>المبلغ المطلوب</span><strong>${Number(order.total).toFixed(2)} د.أ</strong></div>
+        <div id="closeOrderError"></div>
+        <form id="closeOrderForm">
+          <div class="field">
+            <label>المبلغ المستلم (نقدًا)</label>
+            <input type="number" step="0.01" min="0" name="cash_received" value="${Number(order.total).toFixed(2)}" required>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-ghost" id="cancelClose">إلغاء</button>
+            <button type="submit" class="btn btn-green">تأكيد الاستلام وإغلاق</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+
+  $("#cancelClose").addEventListener("click", () => root.innerHTML = "");
+  root.querySelector(".modal-overlay").addEventListener("click", (e) => { if (e.target.classList.contains("modal-overlay")) root.innerHTML = ""; });
+
+  $("#closeOrderForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = $("#closeOrderError");
+    clearError(errBox);
+    const cash = parseFloat(new FormData(e.target).get("cash_received"));
+    try {
+      await updateOrder(order.id, { status: "done", cash_received: cash });
+      root.innerHTML = "";
+    } catch (err) {
+      showError(errBox, err.message);
+    }
+  });
+}
+</script>
+</body>
+</html>

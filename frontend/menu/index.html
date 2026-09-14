@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title id="pageTitle">المنيو</title>
+<meta name="theme-color" content="#fff8ec">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<script src="../assets/supabase-config.js"></script>
+<style>
+  :root {
+    /* هاي قيم افتراضية — بتنكتب فوقها فورًا بألوان براند المطعم الفعلية (brand_colors) وقت التحميل.
+       القالب (structure) مستقل عن الهوية البصرية (identity) — بند 17 بالبرومبت. */
+    --brand-primary: #ff431a;
+    --brand-secondary: #1c1006;
+    --brand-accent: #ffc229;
+    --paper: #fff8ec; --paper-warm: #ffefd8; --ink: #1c1006; --ink-soft: #6b5843;
+    --green: #1f8a4c; --gray: #9a8a76; --line: #e7d3b4;
+    --font-display: 'Lalezar', sans-serif; --font-body: 'Tajawal', sans-serif;
+    --hard: 5px 5px 0 var(--ink); --hard-sm: 3px 3px 0 var(--ink);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; }
+  body {
+    font-family: var(--font-body); background: var(--paper); color: var(--ink);
+    min-height:100vh; -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,h4 { font-family: var(--font-display); font-weight:400; }
+  button, input { font-family: var(--font-body); }
+  .hidden { display:none !important; }
+  img { max-width:100%; display:block; }
+
+  /* ===== شاشات التحميل / الخطأ ===== */
+  #loadingScreen, #errorScreen {
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:2rem 1.5rem; text-align:center; gap:1rem;
+  }
+  .spinner {
+    width:38px; height:38px; border-radius:50%; border:4px solid var(--line);
+    border-top-color: var(--brand-primary); animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-icon {
+    width:56px; height:56px; border-radius:16px; background:#ffe0d6; border:2.5px solid var(--red-dark, #c22400);
+    display:flex; align-items:center; justify-content:center; font-size:1.6rem;
+  }
+  #errorScreen h2 { font-size:1.3rem; margin-top:0.25rem; }
+  #errorScreen p { color:var(--ink-soft); font-weight:500; max-width:320px; line-height:1.6; }
+
+  /* ===== الهيدر ===== */
+  header.topbar {
+    position:sticky; top:0; z-index:40; background:var(--paper); border-bottom:3px solid var(--ink);
+    display:flex; align-items:center; justify-content:space-between; padding:0.85rem 1.1rem; gap:0.6rem;
+  }
+  .brand { display:flex; align-items:center; gap:0.6rem; min-width:0; }
+  .brand img.logo { width:38px; height:38px; border-radius:10px; border:2px solid var(--ink); object-fit:cover; flex-shrink:0; }
+  .brand .logo-fallback {
+    width:38px; height:38px; border-radius:10px; background:var(--brand-primary); border:2px solid var(--ink);
+    display:flex; align-items:center; justify-content:center; color:white; font-family:var(--font-display); font-size:1.1rem; flex-shrink:0;
+  }
+  .brand .name { font-family:var(--font-display); font-size:1.15rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .header-actions { display:flex; align-items:center; gap:0.5rem; flex-shrink:0; }
+  .icon-btn {
+    width:34px; height:34px; border-radius:9px; border:2px solid var(--ink); background:white;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem; cursor:pointer;
+  }
+  .demo-badge {
+    background:var(--brand-accent); border:2px solid var(--ink); border-radius:100px; padding:0.25rem 0.7rem;
+    font-size:0.72rem; font-weight:800; white-space:nowrap;
+  }
+
+  /* ===== تبويبات الفئات ===== */
+  .category-tabs {
+    display:flex; gap:0.5rem; overflow-x:auto; padding:0.8rem 1.1rem; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; border-bottom:1px solid var(--line);
+  }
+  .category-tabs::-webkit-scrollbar { display:none; }
+  .cat-tab {
+    flex-shrink:0; padding:0.5rem 1rem; border-radius:100px; border:2px solid var(--ink); background:white;
+    font-weight:800; font-size:0.85rem; cursor:pointer; white-space:nowrap;
+  }
+  .cat-tab.active { background:var(--brand-primary); color:white; }
+
+  /* ===== شريط البحث (اختياري حسب settings.show_search) ===== */
+  .search-bar { padding: 0 1.1rem 0.8rem; }
+  .search-bar input {
+    width:100%; padding:0.65rem 0.9rem; border:2px solid var(--ink); border-radius:10px; font-size:0.9rem;
+    background:white; font-weight:600;
+  }
+
+  /* ===== المنتجات ===== */
+  .products-container { padding:0.5rem 1.1rem 6.5rem; }
+  .category-section { margin-top:1.1rem; }
+  .category-title { font-size:1.2rem; margin-bottom:0.6rem; }
+  .products-grid.layout-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:0.8rem; }
+  .products-grid.layout-list { display:flex; flex-direction:column; gap:0.7rem; }
+
+  .product-card {
+    background:white; border:2px solid var(--ink); border-radius:14px; overflow:hidden; box-shadow: var(--hard-sm);
+    display:flex; flex-direction:column;
+  }
+  .layout-list .product-card { flex-direction:row; }
+  .product-card.compact { box-shadow:none; }
+  .product-img-wrap { aspect-ratio:4/3; background:var(--paper-warm); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .layout-list .product-img-wrap { width:92px; aspect-ratio:1/1; flex-shrink:0; }
+  .product-img-wrap img { width:100%; height:100%; object-fit:cover; }
+  .product-img-wrap .no-img { font-size:1.6rem; opacity:0.35; }
+  .product-info { padding:0.65rem 0.75rem; display:flex; flex-direction:column; gap:0.35rem; flex:1; min-width:0; }
+  .product-name { font-size:0.92rem; font-weight:700; line-height:1.3; }
+  .product-price { font-weight:800; color:var(--brand-primary); font-size:0.95rem; }
+  .product-add-row { display:flex; align-items:center; justify-content:space-between; margin-top:auto; gap:0.4rem; }
+  .btn-add {
+    background:var(--ink); color:white; border:none; border-radius:8px; padding:0.4rem 0.7rem;
+    font-weight:800; font-size:0.8rem; cursor:pointer; flex-shrink:0;
+  }
+  .qty-stepper { display:flex; align-items:center; gap:0.5rem; }
+  .qty-stepper button {
+    width:26px; height:26px; border-radius:7px; border:2px solid var(--ink); background:white; font-weight:900; cursor:pointer;
+  }
+  .qty-stepper span { min-width:16px; text-align:center; font-weight:800; }
+  .empty-state { text-align:center; color:var(--ink-soft); padding:3rem 1rem; font-weight:600; }
+
+  /* ===== شريط السلة العائم ===== */
+  .cart-bar {
+    position:fixed; bottom:0; left:0; right:0; padding:0.8rem 1.1rem calc(0.8rem + var(--safe-bottom));
+    background:transparent; z-index:30;
+  }
+  .cart-bar button {
+    width:100%; background:var(--brand-primary); color:white; border:2.5px solid var(--ink); border-radius:14px;
+    padding:0.9rem 1.1rem; font-weight:800; font-size:0.95rem; box-shadow: var(--hard); cursor:pointer;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+
+  /* ===== مودال (سلة / تأكيد) ===== */
+  .modal { position:fixed; inset:0; z-index:50; background:rgba(28,16,6,0.45); display:flex; align-items:flex-end; }
+  .modal-sheet {
+    background:var(--paper); width:100%; max-height:88vh; border-radius:20px 20px 0 0; border:2.5px solid var(--ink); border-bottom:none;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  @media (min-width:560px) {
+    .modal { align-items:center; justify-content:center; }
+    .modal-sheet { max-width:420px; border-radius:20px; border-bottom:2.5px solid var(--ink); }
+  }
+  .modal-header { display:flex; align-items:center; justify-content:space-between; padding:1rem 1.2rem; border-bottom:2px solid var(--ink); }
+  .modal-header button { background:none; border:none; font-size:1.4rem; cursor:pointer; line-height:1; }
+  .cart-items { overflow-y:auto; padding:0.3rem 1.2rem; flex:1; }
+  .cart-item { display:flex; align-items:center; justify-content:space-between; padding:0.8rem 0; border-bottom:1px solid var(--line); gap:0.6rem; }
+  .cart-item-name { font-weight:700; font-size:0.9rem; }
+  .cart-item-price { color:var(--ink-soft); font-size:0.8rem; font-weight:600; }
+  .cart-footer { padding:1rem 1.2rem calc(1rem + var(--safe-bottom)); border-top:2px solid var(--ink); }
+  .cart-total-row { display:flex; justify-content:space-between; font-weight:800; font-size:1.1rem; margin-bottom:0.8rem; }
+  .btn { display:flex; align-items:center; justify-content:center; gap:0.5rem; padding:0.85rem 1.2rem; font-weight:800; font-size:0.95rem; border-radius:12px; border:2.5px solid var(--ink); cursor:pointer; }
+  .btn-primary { background:var(--brand-primary); color:white; box-shadow:var(--hard-sm); }
+  .btn-primary:hover { transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--ink); }
+  .btn-primary[disabled] { opacity:0.5; pointer-events:none; }
+  .btn-block { width:100%; }
+  .btn-ghost { background:white; }
+  .empty-cart-note { text-align:center; color:var(--ink-soft); padding:2.5rem 1rem; font-weight:600; }
+
+  /* ===== تأكيد الطلب / تتبع الحالة ===== */
+  .confirmation { padding:1.6rem 1.4rem calc(1.6rem + var(--safe-bottom)); text-align:center; align-items:center; }
+  .confirmation .status-badge {
+    display:inline-flex; align-items:center; gap:0.4rem; padding:0.5rem 1rem; border-radius:100px;
+    border:2px solid var(--ink); font-weight:800; font-size:0.85rem; margin:0.9rem 0;
+  }
+  .status-pending { background:#fff3d6; }
+  .status-confirmed { background:#d6ecff; }
+  .status-done { background:#d6f5e0; }
+  .status-dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
+  .confirmation .order-meta { color:var(--ink-soft); font-size:0.85rem; font-weight:600; margin-bottom:0.4rem; }
+  .confirmation .big-icon { font-size:2.4rem; }
+
+  [dir="ltr"] body { direction:ltr; }
+</style>
+</head>
+<body>
+
+  <div id="loadingScreen">
+    <div class="spinner"></div>
+    <p data-i18n="loading">جاري تحميل المنيو…</p>
+  </div>
+
+  <div id="errorScreen" class="hidden">
+    <div class="error-icon">!</div>
+    <h2 id="errorTitle"></h2>
+    <p id="errorMessage"></p>
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <div class="brand">
+        <img id="logoImg" class="logo hidden" alt="logo">
+        <div id="logoFallback" class="logo-fallback"></div>
+        <span class="name" id="restaurantName"></span>
+      </div>
+      <div class="header-actions">
+        <span id="demoBadge" class="demo-badge hidden" data-i18n="previewMode"></span>
+        <button class="icon-btn" id="langToggle">EN</button>
+      </div>
+    </header>
+
+    <nav class="category-tabs" id="categoryTabs"></nav>
+    <div class="search-bar hidden" id="searchBar">
+      <input type="search" id="searchInput" data-i18n-placeholder="searchPlaceholder">
+    </div>
+
+    <main class="products-container" id="productsContainer"></main>
+
+    <div class="cart-bar hidden" id="cartBar">
+      <button id="openCartBtn">
+        <span id="cartSummary"></span>
+        <span data-i18n="viewCart"></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="cartModal">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h2 data-i18n="yourOrder">طلبك</h2>
+        <button id="closeCartBtn" aria-label="close">×</button>
+      </div>
+      <div class="cart-items" id="cartItemsList"></div>
+      <div class="cart-footer">
+        <div class="cart-total-row">
+          <span data-i18n="total">الإجمالي</span>
+          <span id="modalTotal"></span>
+        </div>
+        <button class="btn btn-primary btn-block" id="placeOrderBtn" data-i18n="placeOrder">إرسال الطلب</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal hidden" id="confirmationModal">
+    <div class="modal-sheet confirmation">
+      <div class="big-icon">🧾</div>
+      <h2 data-i18n="orderPlaced">تم إرسال طلبك</h2>
+      <div class="order-meta" id="confirmationMeta"></div>
+      <div class="status-badge status-pending" id="statusBadge">
+        <span class="status-dot"></span>
+        <span id="statusText"></span>
+      </div>
+      <button class="btn btn-ghost btn-block" id="backToMenuBtn" data-i18n="backToMenu">الرجوع للمنيو</button>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ============================================================
+  // 1) إعدادات الاتصال — Supabase مباشرة (بلا أي Node backend). القيم الفعلية
+  //    (SUPABASE_URL / SUPABASE_ANON_KEY) تُقرأ من ../assets/supabase-config.js،
+  //    وMenuSDK (خطوة 3 تحت) هو من يتصل فعليًا — هذا الملف ما يلمس Supabase مباشرة.
+  // ============================================================
+
+  // ============================================================
+  // 2) i18n بسيط — بدون أي بنية تمنع الترجمة لاحقًا (بند 22 بالبرومبت)
+  // ============================================================
+  const I18N = {
+    ar: {
+      loading: "جاري تحميل المنيو…",
+      previewMode: "معاينة تجريبية",
+      viewCart: "عرض السلة",
+      yourOrder: "طلبك",
+      total: "الإجمالي",
+      placeOrder: "إرسال الطلب",
+      sending: "جاري الإرسال…",
+      orderPlaced: "تم إرسال طلبك",
+      backToMenu: "الرجوع للمنيو",
+      searchPlaceholder: "بحث بالمنيو…",
+      emptyCart: "سلتك فاضية — ضيف منتج من المنيو",
+      emptyMenu: "لا توجد منتجات متاحة حاليًا",
+      noResults: "ما في نتائج مطابقة للبحث",
+      statusPending: "طلبك قيد المراجعة",
+      statusConfirmed: "تم تأكيد طلبك — جاري التحضير",
+      statusDone: "طلبك جاهز!",
+      previewNotice: "وضع معاينة — الطلب هون تجريبي وما بينوصل لأي مطعم فعلي",
+      err_RESTAURANT_NOT_FOUND_title: "المطعم غير موجود",
+      err_RESTAURANT_NOT_FOUND_body: "الرابط اللي فتحته مش صحيح، أو المطعم انحذف.",
+      err_RESTAURANT_INACTIVE_title: "المطعم غير متاح حاليًا",
+      err_RESTAURANT_INACTIVE_body: "هذا المطعم موقوف مؤقتًا. جرّب تتواصل مع الكاشير مباشرة.",
+      err_TABLE_NOT_FOUND_title: "الطاولة غير موجودة",
+      err_TABLE_NOT_FOUND_body: "رمز الطاولة/البطاقة اللي مسحتها مش صحيح.",
+      err_TABLE_INACTIVE_title: "الطاولة غير مفعّلة",
+      err_TABLE_INACTIVE_body: "هذه الطاولة غير مفعّلة حاليًا — بلّغ الكاشير من فضلك.",
+      err_INVALID_MENU_URL_title: "رابط غير صالح",
+      err_INVALID_MENU_URL_body: "امسح بطاقة NFC/QR الخاصة بالطاولة من جديد.",
+      err_PRODUCT_UNAVAILABLE_title: "منتج غير متاح",
+      err_PRODUCT_UNAVAILABLE_body: "أحد المنتجات بطلبك صار غير متاح — حدّث الصفحة وحاول من جديد.",
+      err_ACTIVE_ORDER_EXISTS_title: "يوجد طلب سابق",
+      err_ACTIVE_ORDER_EXISTS_body: "لسا في طلب سابق لهذه الطاولة ما خلص. راجع الكاشير لو محتاج تعديل.",
+      err_UNKNOWN_title: "صار في خطأ",
+      err_UNKNOWN_body: "تعذر تحميل المنيو. تأكد من اتصال الإنترنت وحاول من جديد.",
+    },
+    en: {
+      loading: "Loading menu…",
+      previewMode: "Preview",
+      viewCart: "View cart",
+      yourOrder: "Your order",
+      total: "Total",
+      placeOrder: "Place order",
+      sending: "Sending…",
+      orderPlaced: "Order placed",
+      backToMenu: "Back to menu",
+      searchPlaceholder: "Search menu…",
+      emptyCart: "Your cart is empty — add something from the menu",
+      emptyMenu: "No items available right now",
+      noResults: "No items match your search",
+      statusPending: "Your order is pending",
+      statusConfirmed: "Order confirmed — being prepared",
+      statusDone: "Your order is ready!",
+      previewNotice: "Preview mode — this order is simulated and isn't sent to any real restaurant",
+      err_RESTAURANT_NOT_FOUND_title: "Restaurant not found",
+      err_RESTAURANT_NOT_FOUND_body: "This link looks incorrect, or the restaurant no longer exists.",
+      err_RESTAURANT_INACTIVE_title: "Restaurant unavailable",
+      err_RESTAURANT_INACTIVE_body: "This restaurant is temporarily unavailable. Please ask staff for help.",
+      err_TABLE_NOT_FOUND_title: "Table not found",
+      err_TABLE_NOT_FOUND_body: "The table/card code you scanned isn't valid.",
+      err_TABLE_INACTIVE_title: "Table inactive",
+      err_TABLE_INACTIVE_body: "This table isn't active right now — please notify staff.",
+      err_INVALID_MENU_URL_title: "Invalid link",
+      err_INVALID_MENU_URL_body: "Please scan the table's NFC/QR code again.",
+      err_PRODUCT_UNAVAILABLE_title: "Item unavailable",
+      err_PRODUCT_UNAVAILABLE_body: "One of the items in your order is no longer available — refresh and try again.",
+      err_ACTIVE_ORDER_EXISTS_title: "Existing order",
+      err_ACTIVE_ORDER_EXISTS_body: "There's already an unfinished order for this table. Ask staff if you need changes.",
+      err_UNKNOWN_title: "Something went wrong",
+      err_UNKNOWN_body: "Couldn't load the menu. Check your connection and try again.",
+    },
+  };
+
+  let lang = (navigator.language || "ar").toLowerCase().startsWith("ar") ? "ar" : "en";
+
+  function t(key) {
+    return (I18N[lang] && I18N[lang][key]) || (I18N.ar[key] || key);
+  }
+
+  function applyLanguage() {
+    const html = document.getElementById("htmlRoot");
+    html.lang = lang;
+    html.dir = lang === "ar" ? "rtl" : "ltr";
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      el.textContent = t(el.getAttribute("data-i18n"));
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
+      el.placeholder = t(el.getAttribute("data-i18n-placeholder"));
+    });
+    document.getElementById("langToggle").textContent = lang === "ar" ? "EN" : "AR";
+  }
+
+  // ============================================================
+  // 3) تحميل MenuSDK — أصبح أصل ثابت (static asset) بنفس الـFrontend بدل ما
+  //    يُخدَّم ديناميكيًا من Node backend. بقي التحميل الديناميكي (loadScript)
+  //    بدل <script> عادي بالـhead، بقصد: هيك القالب المدمج يمرّ بنفس آلية تحميل
+  //    أي قالب مخصّص آخر (مصدر واحد للحقيقة بمنطق التحميل، حتى لو المصدر تغيّر).
+  // ============================================================
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error("تعذر تحميل menu-sdk.js من " + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  // ============================================================
+  // 4) الحالة العامة للصفحة
+  // ============================================================
+  const cart = new Map(); // product_id -> { product, qty }
+  let bootstrapData = null;
+  let currentOrder = null; // { id, access_token }
+  let stopPolling = null;
+  const isDemo = new URLSearchParams(location.search).get("demo") === "1";
+
+  function showScreen(name) {
+    document.getElementById("loadingScreen").classList.toggle("hidden", name !== "loading");
+    document.getElementById("errorScreen").classList.toggle("hidden", name !== "error");
+    document.getElementById("app").classList.toggle("hidden", name !== "app");
+  }
+
+  function showError(code) {
+    showScreen("error");
+    document.getElementById("errorTitle").textContent = t(`err_${code}_title`) || t("err_UNKNOWN_title");
+    document.getElementById("errorMessage").textContent = t(`err_${code}_body`) || t("err_UNKNOWN_body");
+  }
+
+  // ============================================================
+  // 5) رندر المنيو
+  // ============================================================
+  function renderBranding(restaurant) {
+    const colors = restaurant.brand_colors || {};
+    const root = document.documentElement;
+    if (colors.primary) root.style.setProperty("--brand-primary", colors.primary);
+    if (colors.secondary) root.style.setProperty("--brand-secondary", colors.secondary);
+    if (colors.accent) root.style.setProperty("--brand-accent", colors.accent);
+
+    document.title = restaurant.name;
+    document.getElementById("restaurantName").textContent = restaurant.name;
+    document.getElementById("demoBadge").classList.toggle("hidden", !isDemo);
+
+    const logoImg = document.getElementById("logoImg");
+    const fallback = document.getElementById("logoFallback");
+    if (restaurant.logo_url) {
+      logoImg.src = restaurant.logo_url;
+      logoImg.classList.remove("hidden");
+      fallback.classList.add("hidden");
+    } else {
+      fallback.textContent = (restaurant.name || "؟").trim().charAt(0);
+      fallback.classList.remove("hidden");
+      logoImg.classList.add("hidden");
+    }
+  }
+
+  let activeCategory = "__all__";
+  let searchTerm = "";
+
+  function renderCategoryTabs(categories) {
+    const nav = document.getElementById("categoryTabs");
+    nav.innerHTML = "";
+    const allTab = document.createElement("button");
+    allTab.className = "cat-tab" + (activeCategory === "__all__" ? " active" : "");
+    allTab.textContent = lang === "ar" ? "الكل" : "All";
+    allTab.onclick = () => { activeCategory = "__all__"; renderProducts(); renderCategoryTabs(categories); };
+    nav.appendChild(allTab);
+
+    categories.forEach((cat) => {
+      const btn = document.createElement("button");
+      btn.className = "cat-tab" + (activeCategory === cat.name ? " active" : "");
+      btn.textContent = cat.name;
+      btn.onclick = () => { activeCategory = cat.name; renderProducts(); renderCategoryTabs(categories); };
+      nav.appendChild(btn);
+    });
+  }
+
+  function productCardHtml(p, settings) {
+    const showImages = settings.show_images !== false;
+    const cardStyle = settings.card_style === "compact" ? " compact" : "";
+    const qty = cart.has(p.id) ? cart.get(p.id).qty : 0;
+
+    return `
+      <div class="product-card${cardStyle}" data-product-id="${p.id}">
+        ${showImages ? `
+        <div class="product-img-wrap">
+          ${p.image_url ? `<img loading="lazy" src="${p.image_url}" alt="${escapeHtml(p.name)}">` : `<span class="no-img">🍽️</span>`}
+        </div>` : ""}
+        <div class="product-info">
+          <div class="product-name">${escapeHtml(p.name)}</div>
+          <div class="product-price">${formatPrice(p.price)}</div>
+          <div class="product-add-row" data-qty-row>
+            ${qty === 0
+              ? `<button class="btn-add" data-add>${lang === "ar" ? "أضف" : "Add"}</button>`
+              : `<div class="qty-stepper">
+                   <button data-decr>−</button><span data-qty-value>${qty}</span><button data-incr>+</button>
+                 </div>`
+            }
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function renderProducts() {
+    if (!bootstrapData) return;
+    const settings = bootstrapData.template?.settings || {};
+    const layout = settings.layout === "list" ? "layout-list" : "layout-grid";
+    const container = document.getElementById("productsContainer");
+
+    let categories = bootstrapData.menu.categories;
+    if (activeCategory !== "__all__") {
+      categories = categories.filter((c) => c.name === activeCategory);
+    }
+
+    const term = searchTerm.trim().toLowerCase();
+    const sections = categories
+      .map((cat) => ({
+        name: cat.name,
+        products: term ? cat.products.filter((p) => p.name.toLowerCase().includes(term)) : cat.products,
+      }))
+      .filter((cat) => cat.products.length > 0);
+
+    if (sections.length === 0) {
+      container.innerHTML = `<div class="empty-state">${term ? t("noResults") : t("emptyMenu")}</div>`;
+      return;
+    }
+
+    container.innerHTML = sections
+      .map(
+        (cat) => `
+        <section class="category-section">
+          <h3 class="category-title">${escapeHtml(cat.name)}</h3>
+          <div class="products-grid ${layout}">
+            ${cat.products.map((p) => productCardHtml(p, settings)).join("")}
+          </div>
+        </section>`
+      )
+      .join("");
+
+    container.querySelectorAll("[data-product-id]").forEach((card) => {
+      const id = Number(card.getAttribute("data-product-id"));
+      const product = findProductById(id);
+      const addBtn = card.querySelector("[data-add]");
+      if (addBtn) addBtn.onclick = () => { addToCart(product); renderProducts(); updateCartBar(); };
+      const incr = card.querySelector("[data-incr]");
+      const decr = card.querySelector("[data-decr]");
+      if (incr) incr.onclick = () => { addToCart(product); renderProducts(); updateCartBar(); };
+      if (decr) decr.onclick = () => { removeOneFromCart(id); renderProducts(); updateCartBar(); };
+    });
+  }
+
+  function findProductById(id) {
+    for (const cat of bootstrapData.menu.categories) {
+      const found = cat.products.find((p) => p.id === id);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function formatPrice(n) {
+    const num = Number(n);
+    return (Number.isFinite(num) ? num.toFixed(2) : n) + (lang === "ar" ? " ₪" : " ₪");
+  }
+
+  // ============================================================
+  // 6) السلة
+  // ============================================================
+  function addToCart(product) {
+    if (!product) return;
+    const entry = cart.get(product.id) || { product, qty: 0 };
+    entry.qty += 1;
+    cart.set(product.id, entry);
+  }
+  function removeOneFromCart(id) {
+    const entry = cart.get(id);
+    if (!entry) return;
+    entry.qty -= 1;
+    if (entry.qty <= 0) cart.delete(id); else cart.set(id, entry);
+  }
+  function cartTotal() {
+    let total = 0;
+    cart.forEach((e) => { total += Number(e.product.price) * e.qty; });
+    return total;
+  }
+  function cartCount() {
+    let count = 0;
+    cart.forEach((e) => { count += e.qty; });
+    return count;
+  }
+  function updateCartBar() {
+    const bar = document.getElementById("cartBar");
+    const count = cartCount();
+    bar.classList.toggle("hidden", count === 0);
+    document.getElementById("cartSummary").textContent = `${count} · ${formatPrice(cartTotal())}`;
+  }
+  function renderCartModal() {
+    const list = document.getElementById("cartItemsList");
+    if (cart.size === 0) {
+      list.innerHTML = `<div class="empty-cart-note">${t("emptyCart")}</div>`;
+    } else {
+      list.innerHTML = [...cart.values()]
+        .map(
+          (e) => `
+        <div class="cart-item" data-cart-id="${e.product.id}">
+          <div>
+            <div class="cart-item-name">${escapeHtml(e.product.name)}</div>
+            <div class="cart-item-price">${formatPrice(e.product.price)} × ${e.qty}</div>
+          </div>
+          <div class="qty-stepper">
+            <button data-decr>−</button><span>${e.qty}</span><button data-incr>+</button>
+          </div>
+        </div>`
+        )
+        .join("");
+      list.querySelectorAll("[data-cart-id]").forEach((row) => {
+        const id = Number(row.getAttribute("data-cart-id"));
+        row.querySelector("[data-incr]").onclick = () => { addToCart(cart.get(id).product); renderCartModal(); updateCartBar(); renderProducts(); };
+        row.querySelector("[data-decr]").onclick = () => { removeOneFromCart(id); renderCartModal(); updateCartBar(); renderProducts(); };
+      });
+    }
+    document.getElementById("modalTotal").textContent = formatPrice(cartTotal());
+    document.getElementById("placeOrderBtn").disabled = cart.size === 0;
+  }
+
+  // ============================================================
+  // 7) الطلب + التأكيد + polling الحالة (بند 4/5/6 بالبرومبت)
+  // ============================================================
+  async function placeOrder() {
+    const btn = document.getElementById("placeOrderBtn");
+    btn.disabled = true;
+    btn.textContent = t("sending");
+    try {
+      const items = [...cart.values()].map((e) => ({ product_id: e.product.id, qty: e.qty }));
+      const order = await MenuSDK.createOrder(items);
+      currentOrder = { id: order.id, access_token: order.access_token };
+      cart.clear();
+      updateCartBar();
+      document.getElementById("cartModal").classList.add("hidden");
+      openConfirmation();
+    } catch (err) {
+      alert((err && err.message) || t("err_UNKNOWN_body"));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = t("placeOrder");
+    }
+  }
+
+  function statusLabel(status) {
+    if (status === "confirmed") return t("statusConfirmed");
+    if (status === "done") return t("statusDone");
+    return t("statusPending");
+  }
+
+  function openConfirmation() {
+    const modal = document.getElementById("confirmationModal");
+    modal.classList.remove("hidden");
+    document.getElementById("confirmationMeta").textContent = isDemo ? t("previewNotice") : "#" + currentOrder.id;
+
+    const badge = document.getElementById("statusBadge");
+    const text = document.getElementById("statusText");
+    badge.className = "status-badge status-pending";
+    text.textContent = statusLabel("pending");
+
+    if (stopPolling) stopPolling();
+    stopPolling = MenuSDK.pollOrderStatus(currentOrder.id, currentOrder.access_token, (order, err) => {
+      if (err) return;
+      badge.className = "status-badge status-" + order.status;
+      text.textContent = statusLabel(order.status);
+    });
+  }
+
+  // ============================================================
+  // 8) الإقلاع
+  // ============================================================
+  async function boot() {
+    applyLanguage();
+    try {
+      await loadScript("../assets/menu-sdk.js");
+    } catch (err) {
+      showError("UNKNOWN");
+      return;
+    }
+
+    MenuSDK.init({ demo: isDemo });
+
+    if (!isDemo && !MenuSDK._state.slug) {
+      showError("INVALID_MENU_URL");
+      return;
+    }
+
+    try {
+      bootstrapData = await MenuSDK.getBootstrap();
+    } catch (err) {
+      showError(err && err.code ? err.code : "UNKNOWN");
+      return;
+    }
+
+    // قالب مخصص (مو المدمج): حوّل المتصفح لملفاته الفعلية المستضافة على Supabase Storage —
+    // عزل حقيقي (بند 13 بالبرومبت) لأنو رح يشتغل بمستند/origin منفصل تمامًا عن هالصفحة.
+    if (!isDemo && bootstrapData.template && !bootstrapData.template.is_builtin && bootstrapData.template.entry_url) {
+      const target = new URL(bootstrapData.template.entry_url);
+      target.searchParams.set("r", MenuSDK._state.slug);
+      target.searchParams.set("t", MenuSDK._state.token);
+      location.replace(target.toString());
+      return;
+    }
+
+    renderBranding(bootstrapData.restaurant);
+    renderCategoryTabs(bootstrapData.menu.categories);
+
+    const showSearch = bootstrapData.template?.settings?.show_search;
+    if (showSearch) {
+      document.getElementById("searchBar").classList.remove("hidden");
+      document.getElementById("searchInput").addEventListener("input", (e) => {
+        searchTerm = e.target.value;
+        renderProducts();
+      });
+    }
+
+    renderProducts();
+    updateCartBar();
+    showScreen("app");
+  }
+
+  // ============================================================
+  // 9) ربط الأحداث الثابتة
+  // ============================================================
+  document.getElementById("langToggle").onclick = () => {
+    lang = lang === "ar" ? "en" : "ar";
+    applyLanguage();
+    if (bootstrapData) {
+      renderCategoryTabs(bootstrapData.menu.categories);
+      renderProducts();
+      updateCartBar();
+    }
+  };
+  document.getElementById("openCartBtn").onclick = () => {
+    renderCartModal();
+    document.getElementById("cartModal").classList.remove("hidden");
+  };
+  document.getElementById("closeCartBtn").onclick = () => document.getElementById("cartModal").classList.add("hidden");
+  document.getElementById("placeOrderBtn").onclick = placeOrder;
+  document.getElementById("backToMenuBtn").onclick = () => {
+    document.getElementById("confirmationModal").classList.add("hidden");
+    if (stopPolling) stopPolling();
+  };
+
+  boot();
+})();
+</script>
+</body>
+</html>

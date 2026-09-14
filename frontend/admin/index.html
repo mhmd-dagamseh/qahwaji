@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة السوبر أدمن | قهوجي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<script src="../assets/supabase-config.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --paper: #fff8ec; --paper-warm: #ffefd8; --ink: #1c1006; --ink-soft: #6b5843;
+    --red: #ff431a; --red-dark: #c22400; --yellow: #ffc229; --green: #1f8a4c;
+    --gray: #9a8a76; --line: #e7d3b4;
+    --font-display: 'Lalezar', sans-serif; --font-body: 'Tajawal', sans-serif;
+    --hard: 5px 5px 0 var(--ink); --hard-sm: 3px 3px 0 var(--ink);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: var(--font-body); background: var(--paper); color: var(--ink);
+    min-height:100vh; -webkit-font-smoothing:antialiased;
+    background-image: radial-gradient(var(--line) 1.3px, transparent 1.3px); background-size:26px 26px;
+  }
+  h1,h2,h3,h4 { font-family: var(--font-display); font-weight:400; }
+  button, input, select, textarea { font-family: var(--font-body); }
+  .hidden { display:none !important; }
+
+  /* ===== شاشة تسجيل الدخول ===== */
+  #loginScreen { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
+  .login-card {
+    background:white; border:2.5px solid var(--ink); border-radius:18px; box-shadow: var(--hard);
+    padding:2.5rem; width:100%; max-width:380px;
+  }
+  .login-card .logo-mark {
+    width:46px; height:46px; background:var(--red); border:2.5px solid var(--ink); border-radius:11px;
+    display:flex; align-items:center; justify-content:center; color:white; margin-bottom:1.25rem; transform:rotate(-4deg);
+  }
+  .login-card h1 { font-size:1.6rem; margin-bottom:0.4rem; }
+  .login-card p.sub { color:var(--ink-soft); font-size:0.9rem; margin-bottom:1.75rem; font-weight:500; }
+
+  .field { margin-bottom:1.1rem; }
+  .field label { display:block; font-size:0.85rem; font-weight:800; margin-bottom:0.4rem; }
+  .field input, .field select, .field textarea {
+    width:100%; padding:0.75rem 0.9rem; border:2px solid var(--ink); border-radius:10px;
+    font-size:0.95rem; background:var(--paper); color:var(--ink); font-weight:600;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { outline:3px solid var(--red); outline-offset:1px; }
+  .field-hint { font-size:0.78rem; color:var(--ink-soft); margin-top:0.3rem; font-weight:500; }
+
+  .btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:0.5rem;
+    padding:0.8rem 1.4rem; font-weight:800; font-size:0.9rem; border-radius:10px;
+    border:2.5px solid var(--ink); cursor:pointer; transition: all 0.15s ease; text-decoration:none;
+  }
+  .btn:active { transform:translate(3px,3px); box-shadow:none !important; }
+  .btn-primary { background:var(--red); color:white; box-shadow:var(--hard-sm); }
+  .btn-primary:hover { transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--ink); }
+  .btn-dark { background:var(--ink); color:var(--paper); box-shadow:var(--hard-sm); }
+  .btn-dark:hover { transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--red); }
+  .btn-ghost { background:transparent; color:var(--ink); }
+  .btn-ghost:hover { background:var(--paper-warm); }
+  .btn-sm { padding:0.5rem 0.9rem; font-size:0.8rem; border-radius:8px; }
+  .btn-block { width:100%; }
+  .btn[disabled] { opacity:0.55; cursor:not-allowed; pointer-events:none; }
+
+  .error-banner {
+    background:#ffe0d6; border:2px solid var(--red-dark); color:var(--red-dark); font-weight:700;
+    padding:0.8rem 1rem; border-radius:10px; margin-bottom:1.1rem; font-size:0.88rem;
+  }
+
+  /* ===== واجهة التطبيق ===== */
+  #app { min-height:100vh; }
+  header.topbar {
+    position:sticky; top:0; z-index:50; background:var(--paper); border-bottom:3px solid var(--ink);
+    display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.75rem;
+  }
+  .topbar .brand { display:flex; align-items:center; gap:0.6rem; font-family:var(--font-display); font-size:1.4rem; }
+  .topbar .brand .logo-mark { width:32px; height:32px; background:var(--red); border:2px solid var(--ink); border-radius:9px; display:flex; align-items:center; justify-content:center; color:white; transform:rotate(-4deg); }
+  .topbar .who { font-size:0.85rem; color:var(--ink-soft); font-weight:700; }
+
+  .tabs { display:flex; gap:0.5rem; padding:1.25rem 1.75rem 0; max-width:1180px; margin:0 auto; }
+  .tab-btn {
+    padding:0.65rem 1.3rem; border:2.5px solid var(--ink); border-radius:100px; background:white;
+    font-weight:800; font-size:0.9rem; cursor:pointer;
+  }
+  .tab-btn.active { background:var(--ink); color:var(--paper); }
+
+  main { max-width:1180px; margin:0 auto; padding:1.75rem; }
+
+  .panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; }
+  .panel-head h2 { font-size:1.7rem; }
+  .panel-head p { color:var(--ink-soft); font-size:0.9rem; font-weight:600; margin-top:0.25rem; }
+
+  /* جدول المطاعم */
+  .card-table { background:white; border:2.5px solid var(--ink); border-radius:16px; box-shadow:var(--hard-sm); overflow:hidden; }
+  table { width:100%; border-collapse:collapse; }
+  thead th { text-align:right; font-size:0.78rem; font-weight:800; color:var(--ink-soft); padding:0.9rem 1rem; border-bottom:2px solid var(--ink); background:var(--paper-warm); }
+  tbody td { padding:0.9rem 1rem; border-bottom:1px dashed var(--line); font-size:0.9rem; font-weight:600; vertical-align:middle; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:hover { background:var(--paper-warm); }
+  .rest-name { font-weight:800; }
+  .rest-slug { color:var(--ink-soft); font-size:0.78rem; font-weight:600; }
+
+  .badge { display:inline-flex; align-items:center; gap:0.35rem; padding:0.3rem 0.7rem; border-radius:100px; font-size:0.75rem; font-weight:800; border:2px solid var(--ink); }
+  .badge::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .badge-trial { background:var(--yellow); }
+  .badge-active { background:#c8f0d6; color:var(--green); }
+  .badge-suspended { background:#ffd9cf; color:var(--red-dark); }
+  .badge-cancelled { background:#eee; color:var(--gray); }
+
+  .row-actions { display:flex; gap:0.5rem; flex-wrap:wrap; }
+
+  .empty-state { text-align:center; padding:3.5rem 1rem; color:var(--ink-soft); font-weight:600; }
+
+  /* شبكة الباقات */
+  .plans-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:1.25rem; }
+  .plan-card { background:white; border:2.5px solid var(--ink); border-radius:16px; padding:1.5rem; box-shadow:var(--hard-sm); }
+  .plan-card h3 { font-size:1.3rem; margin-bottom:0.3rem; }
+  .plan-card .plan-price { color:var(--red-dark); font-weight:800; font-size:0.95rem; margin-bottom:0.9rem; }
+  .plan-card .plan-meta { font-size:0.85rem; color:var(--ink-soft); font-weight:600; margin-bottom:1rem; }
+  .plan-card .plan-actions { display:flex; gap:0.5rem; }
+
+  /* ===== نافذة منبثقة (Modal) ===== */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(28,16,6,0.55); z-index:200;
+    display:flex; align-items:center; justify-content:center; padding:1.5rem;
+  }
+  .modal {
+    background:var(--paper); border:2.5px solid var(--ink); border-radius:18px; box-shadow:var(--hard);
+    width:100%; max-width:460px; max-height:90vh; overflow-y:auto; padding:2rem;
+  }
+  .modal h3 { font-size:1.4rem; margin-bottom:1.25rem; }
+  .modal-actions { display:flex; gap:0.75rem; margin-top:1.5rem; }
+  .modal-actions .btn { flex:1; }
+
+  .spinner-text { font-size:0.85rem; color:var(--ink-soft); font-weight:700; padding:1rem; text-align:center; }
+
+  @media (max-width:720px) {
+    .card-table { overflow-x:auto; }
+    table { min-width:640px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== شاشة تسجيل الدخول ===================== -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="logo-mark">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 10H20L18 20H6L4 10Z"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg>
+    </div>
+    <h1>لوحة السوبر أدمن</h1>
+    <p class="sub">سجّل دخولك لإدارة المطاعم والباقات</p>
+    <div id="loginError"></div>
+    <form id="loginForm">
+      <div class="field">
+        <label for="loginEmail">البريد الإلكتروني</label>
+        <input type="email" id="loginEmail" required autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="loginPassword">كلمة المرور</label>
+        <input type="password" id="loginPassword" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="loginBtn">دخول</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== التطبيق بعد تسجيل الدخول ===================== -->
+<div id="app" class="hidden">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo-mark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 10H20L18 20H6L4 10Z"/><path d="M8 10V6a4 4 0 0 1 8 0v4"/></svg></span>
+      قهوجي — أدمن
+    </div>
+    <div style="display:flex; align-items:center; gap:1rem;">
+      <span class="who" id="whoAmI"></span>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">تسجيل خروج</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="restaurants">المطاعم</button>
+    <button class="tab-btn" data-tab="plans">الباقات</button>
+    <button class="tab-btn" data-tab="templates">القوالب</button>
+  </div>
+
+  <main>
+    <div id="globalError"></div>
+
+    <!-- ---------- تبويب المطاعم ---------- -->
+    <section id="tab-restaurants">
+      <div class="panel-head">
+        <div>
+          <h2>المطاعم</h2>
+          <p>كل المطاعم المسجّلة بالمنصة، حالتها، وباقتها الحالية.</p>
+        </div>
+        <button class="btn btn-primary" id="openCreateRestaurant">+ مطعم جديد</button>
+      </div>
+      <div class="card-table">
+        <table>
+          <thead>
+            <tr>
+              <th>المطعم</th>
+              <th>الحالة</th>
+              <th>الباقة</th>
+              <th>الطاولات</th>
+              <th>تاريخ التسجيل</th>
+              <th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="restaurantsBody">
+            <tr><td colspan="6" class="spinner-text">جاري التحميل...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- تبويب الباقات ---------- -->
+    <section id="tab-plans" class="hidden">
+      <div class="panel-head">
+        <div>
+          <h2>الباقات</h2>
+          <p>الباقات الفعّالة المعروضة للمطاعم عند الاشتراك.</p>
+        </div>
+        <button class="btn btn-primary" id="openCreatePlan">+ باقة جديدة</button>
+      </div>
+      <div class="plans-grid" id="plansGrid">
+        <div class="spinner-text">جاري التحميل...</div>
+      </div>
+    </section>
+
+    <!-- ---------- تبويب القوالب (Phase 2) ---------- -->
+    <section id="tab-templates" class="hidden">
+      <div class="panel-head">
+        <div>
+          <h2>قوالب المنيو</h2>
+          <p>ارفع، فعّل، أو ألغِ تفعيل قوالب Customer Menu. القالب المدمج (Built-in) شغّال دائمًا كخيار احتياطي.</p>
+        </div>
+        <button class="btn btn-primary" id="openUploadTemplate">+ رفع قالب (ZIP)</button>
+      </div>
+      <div class="plans-grid" id="templatesGrid">
+        <div class="spinner-text">جاري التحميل...</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ===================== منطقة النوافذ المنبثقة ===================== -->
+<div id="modalRoot"></div>
+
+<script>
+// ======================================================================
+// إعدادات — SUPABASE_URL/SUPABASE_ANON_KEY من ../assets/supabase-config.js
+// ======================================================================
+const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+  // بلا حفظ الجلسة بـlocalStorage عن قصد — نفس القرار الأمني الأصلي (دخول من جديد
+  // بعد أي تحديث للصفحة، بدل توكن دائم بالمتصفح). راجع الرسالة المرفقة لسبب هالقرار
+  // بالنسخة القديمة.
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+let CURRENT_ADMIN = null;
+let PLANS_CACHE = [];
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+// ---------------------------------------------------------------------
+// نداء RPC عام — يقابل دالة api() القديمة، لكن فوق Supabase RPC بدل REST مخصص.
+// ---------------------------------------------------------------------
+async function callRpc(name, params) {
+  const { data, error } = await sb.rpc(name, params || {});
+  if (error) throw new Error(error.message);
+  return data;
+}
+// قراءة/كتابة جدول عام مع رمي رسالة الخطأ كـException عادي (نفس أسلوب api() القديمة)
+function unwrap({ data, error }) {
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// ---------------------------------------------------------------------
+// استدعاء Edge Function (onboard-restaurant / upload-template) مع تمرير جلسة
+// المستخدم الحالية تلقائيًا (sb.functions.invoke يرفق Authorization بنفسه).
+// ---------------------------------------------------------------------
+async function callFunction(name, body, extraHeaders) {
+  const { data, error } = await sb.functions.invoke(name, { body, headers: extraHeaders });
+  if (error) {
+    // supabase-js يغلّف أي استجابة non-2xx بـFunctionsHttpError — نستخرج الرسالة
+    // الفعلية من جسم الاستجابة (شكلها { error: { message } } — راجع _shared/cors.ts)
+    let message = error.message;
+    try {
+      const body = await error.context.json();
+      if (body?.error?.message) message = body.error.message;
+    } catch (_) { /* نكتفي برسالة supabase-js الافتراضية */ }
+    throw new Error(message);
+  }
+  return data;
+}
+
+function showError(container, message) {
+  container.innerHTML = `<div class="error-banner">${escapeHtml(message)}</div>`;
+}
+function clearError(container) { container.innerHTML = ""; }
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+// ---------------------------------------------------------------------
+// تسجيل الدخول عبر Supabase Auth مباشرة (بدل bridge JWT من Node القديم)
+// ---------------------------------------------------------------------
+$("#loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("#loginBtn");
+  const errBox = $("#loginError");
+  clearError(errBox);
+  btn.disabled = true; btn.textContent = "جاري الدخول...";
+
+  try {
+    const email = $("#loginEmail").value.trim();
+    const password = $("#loginPassword").value;
+
+    const { error: signInError } = await sb.auth.signInWithPassword({ email, password });
+    if (signInError) throw new Error("فشل تسجيل الدخول: " + signInError.message);
+
+    const superAdminRow = unwrap(await sb.from("super_admins").select("id, email, full_name").maybeSingle());
+    if (!superAdminRow) {
+      await sb.auth.signOut();
+      throw new Error("هذا الحساب ليس حساب سوبر أدمن");
+    }
+
+    CURRENT_ADMIN = superAdminRow;
+    enterApp();
+  } catch (err) {
+    showError(errBox, err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = "دخول";
+  }
+});
+
+$("#logoutBtn").addEventListener("click", async () => {
+  await sb.auth.signOut();
+  CURRENT_ADMIN = null;
+  $("#app").classList.add("hidden");
+  $("#loginScreen").classList.remove("hidden");
+  $("#loginForm").reset();
+});
+
+function enterApp() {
+  $("#loginScreen").classList.add("hidden");
+  $("#app").classList.remove("hidden");
+  $("#whoAmI").textContent = CURRENT_ADMIN?.email || "";
+  loadRestaurants();
+  loadPlans();
+  loadTemplates();
+}
+
+// ---------------------------------------------------------------------
+// التبويبات
+// ---------------------------------------------------------------------
+$$(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    $$(".tab-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    $$("main > section").forEach((s) => s.classList.add("hidden"));
+    $(`#tab-${btn.dataset.tab}`).classList.remove("hidden");
+  });
+});
+
+// ---------------------------------------------------------------------
+// المطاعم
+// ---------------------------------------------------------------------
+const STATUS_LABELS = { trial: "تجريبي", active: "فعّال", suspended: "موقوف", cancelled: "ملغي" };
+
+async function loadRestaurants() {
+  const body = $("#restaurantsBody");
+  body.innerHTML = `<tr><td colspan="6" class="spinner-text">جاري التحميل...</td></tr>`;
+  try {
+    const restaurants = await callRpc("rpc_admin_list_restaurants");
+    if (!restaurants.length) {
+      body.innerHTML = `<tr><td colspan="6" class="empty-state">لا يوجد مطاعم مسجّلة بعد</td></tr>`;
+      return;
+    }
+    body.innerHTML = restaurants.map(renderRestaurantRow).join("");
+    bindRestaurantRowActions();
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="6"></td></tr>`;
+    showError($("#globalError"), err.message);
+  }
+}
+
+function renderRestaurantRow(r) {
+  const used = r.tables_used ?? 0;
+  const max = r.max_tables ?? "—";
+  const created = r.created_at ? new Date(r.created_at).toLocaleDateString("ar-EG") : "—";
+  return `
+    <tr data-id="${r.id}" data-status="${r.status}">
+      <td>
+        <div class="rest-name">${escapeHtml(r.name)}</div>
+        <div class="rest-slug">/${escapeHtml(r.slug)}</div>
+      </td>
+      <td><span class="badge badge-${r.status}">${STATUS_LABELS[r.status] || r.status}</span></td>
+      <td>${escapeHtml(r.plan_name || "بدون باقة")}</td>
+      <td>${used} / ${max}</td>
+      <td>${created}</td>
+      <td>
+        <div class="row-actions">
+          ${r.status === "suspended" || r.status === "cancelled"
+            ? `<button class="btn btn-sm btn-dark act-activate">تفعيل</button>`
+            : `<button class="btn btn-sm btn-ghost act-suspend">تعليق</button>`}
+          <button class="btn btn-sm btn-ghost act-change-plan">تغيير الباقة</button>
+        </div>
+      </td>
+    </tr>`;
+}
+
+function bindRestaurantRowActions() {
+  $$("#restaurantsBody tr[data-id]").forEach((row) => {
+    const id = row.dataset.id;
+    const activateBtn = $(".act-activate", row);
+    const suspendBtn = $(".act-suspend", row);
+    const changePlanBtn = $(".act-change-plan", row);
+
+    activateBtn?.addEventListener("click", () => updateRestaurantStatus(id, "active"));
+    suspendBtn?.addEventListener("click", () => updateRestaurantStatus(id, "suspended"));
+    changePlanBtn?.addEventListener("click", () => openChangePlanModal(id));
+  });
+}
+
+async function updateRestaurantStatus(id, status) {
+  clearError($("#globalError"));
+  try {
+    await callRpc("rpc_update_restaurant_status", { p_restaurant_id: Number(id), p_status: status });
+    loadRestaurants();
+  } catch (err) {
+    showError($("#globalError"), err.message);
+  }
+}
+
+// ---- نافذة إنشاء مطعم جديد ----
+$("#openCreateRestaurant").addEventListener("click", () => {
+  const options = PLANS_CACHE.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+  openModal(`
+    <h3>مطعم جديد</h3>
+    <div id="createRestError"></div>
+    <form id="createRestForm">
+      <div class="field"><label>اسم المطعم</label><input name="name" required></div>
+      <div class="field">
+        <label>الرابط المختصر (slug)</label>
+        <input name="slug" required pattern="[a-z0-9-]+" placeholder="cafe-al-madina">
+        <div class="field-hint">أحرف إنجليزية صغيرة وأرقام وشرطات فقط</div>
+      </div>
+      <div class="field">
+        <label>الباقة</label>
+        <select name="plan_id" required>${options || '<option value="">لا توجد باقات — أضف باقة أولاً</option>'}</select>
+      </div>
+      <div class="field"><label>بريد صاحب المطعم</label><input type="email" name="owner_email" required></div>
+      <div class="field"><label>كلمة مرور صاحب المطعم</label><input type="password" name="owner_password" required minlength="8"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close>إلغاء</button>
+        <button type="submit" class="btn btn-primary">إنشاء المطعم</button>
+      </div>
+    </form>
+  `);
+
+  $("#createRestForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = $("#createRestError");
+    clearError(errBox);
+    const fd = new FormData(e.target);
+    try {
+      // onboard-restaurant Edge Function: restaurant+subscription (RPC ذرّية) ثم
+      // مستخدم Supabase Auth حقيقي لصاحب المطعم ثم ربطه كـowner — بعملية واحدة.
+      // (راجع supabase/functions/onboard-restaurant/index.ts للتفاصيل والـrollback
+      // التلقائي عند فشل أي خطوة لاحقة).
+      await callFunction("onboard-restaurant", Object.fromEntries(fd.entries()));
+      closeModal();
+      loadRestaurants();
+    } catch (err) {
+      showError(errBox, err.message);
+    }
+  });
+});
+
+// ---- نافذة تغيير الباقة ----
+function openChangePlanModal(restaurantId) {
+  const options = PLANS_CACHE.map((p) => `<option value="${p.id}">${escapeHtml(p.name)} (${p.max_tables} طاولة)</option>`).join("");
+  openModal(`
+    <h3>تغيير باقة المطعم</h3>
+    <div id="changePlanError"></div>
+    <form id="changePlanForm">
+      <div class="field">
+        <label>الباقة الجديدة</label>
+        <select name="plan_id" required>${options}</select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close>إلغاء</button>
+        <button type="submit" class="btn btn-primary">تأكيد التغيير</button>
+      </div>
+    </form>
+  `);
+
+  $("#changePlanForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = $("#changePlanError");
+    clearError(errBox);
+    const plan_id = new FormData(e.target).get("plan_id");
+    try {
+      await callRpc("rpc_change_subscription_plan", { p_restaurant_id: Number(restaurantId), p_plan_id: Number(plan_id) });
+      closeModal();
+      loadRestaurants();
+    } catch (err) {
+      showError(errBox, err.message);
+    }
+  });
+}
+
+// ---------------------------------------------------------------------
+// الباقات
+// ---------------------------------------------------------------------
+async function loadPlans() {
+  const grid = $("#plansGrid");
+  grid.innerHTML = `<div class="spinner-text">جاري التحميل...</div>`;
+  try {
+    // RLS "super admin reads all plans" تضمن رؤية الباقات المعطّلة كمان هون (تحسين
+    // عن الـNode القديم اللي كان يعرض active=true بس حتى لسوبر أدمن نفسه —
+    // راجع تعليق §1 بملف phase4-frontend-migration.sql).
+    const plans = unwrap(await sb.from("plans").select("*").order("max_tables"));
+    PLANS_CACHE = plans;
+    if (!plans.length) {
+      grid.innerHTML = `<div class="empty-state">لا توجد باقات فعّالة بعد</div>`;
+      return;
+    }
+    grid.innerHTML = plans.map(renderPlanCard).join("");
+    bindPlanActions();
+  } catch (err) {
+    grid.innerHTML = "";
+    showError($("#globalError"), err.message);
+  }
+}
+
+function renderPlanCard(p) {
+  return `
+    <div class="plan-card" data-id="${p.id}">
+      <h3>${escapeHtml(p.name)} ${p.active ? "" : '<span class="badge badge-gray">معطّلة</span>'}</h3>
+      <div class="plan-price">${p.price_monthly ? p.price_monthly + " د.أ / شهريًا" : "السعر حسب الاتفاق"}</div>
+      <div class="plan-meta">حتى ${p.max_tables} طاولة/بطاقة</div>
+      <div class="plan-actions">
+        <button class="btn btn-sm btn-ghost act-edit-plan">تعديل</button>
+      </div>
+    </div>`;
+}
+
+function bindPlanActions() {
+  $$(".act-edit-plan").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.closest(".plan-card").dataset.id;
+      const plan = PLANS_CACHE.find((p) => String(p.id) === String(id));
+      openEditPlanModal(plan);
+    });
+  });
+}
+
+// ---- نافذة إنشاء باقة ----
+$("#openCreatePlan").addEventListener("click", () => {
+  openModal(`
+    <h3>باقة جديدة</h3>
+    <div id="createPlanError"></div>
+    <form id="createPlanForm">
+      <div class="field"><label>اسم الباقة</label><input name="name" required></div>
+      <div class="field"><label>الرابط المختصر (slug)</label><input name="slug" required pattern="[a-z0-9-]+"></div>
+      <div class="field"><label>الحد الأقصى للطاولات/البطاقات</label><input type="number" name="max_tables" min="1" required></div>
+      <div class="field"><label>السعر الشهري (اتركه فاضي لو بيتحدد بالاتفاق)</label><input type="number" name="price_monthly" min="0" step="0.01"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close>إلغاء</button>
+        <button type="submit" class="btn btn-primary">إنشاء الباقة</button>
+      </div>
+    </form>
+  `);
+
+  $("#createPlanForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = $("#createPlanError");
+    clearError(errBox);
+    const fd = new FormData(e.target);
+    const body = Object.fromEntries(fd.entries());
+    if (!body.price_monthly) delete body.price_monthly;
+    else body.price_monthly = Number(body.price_monthly);
+    body.max_tables = Number(body.max_tables);
+    try {
+      // RLS "super admin writes plans" — إدراج مباشر، بلا حاجة لأي RPC.
+      unwrap(await sb.from("plans").insert(body).select().single());
+      closeModal();
+      loadPlans();
+    } catch (err) {
+      showError(errBox, err.message);
+    }
+  });
+});
+
+// ---- نافذة تعديل باقة ----
+function openEditPlanModal(plan) {
+  openModal(`
+    <h3>تعديل: ${escapeHtml(plan.name)}</h3>
+    <div id="editPlanError"></div>
+    <form id="editPlanForm">
+      <div class="field"><label>اسم الباقة</label><input name="name" value="${escapeHtml(plan.name)}" required></div>
+      <div class="field"><label>الحد الأقصى للطاولات/البطاقات</label><input type="number" name="max_tables" min="1" value="${plan.max_tables}" required></div>
+      <div class="field"><label>السعر الشهري</label><input type="number" name="price_monthly" min="0" step="0.01" value="${plan.price_monthly || ""}"></div>
+      <div class="field">
+        <label>الحالة</label>
+        <select name="active">
+          <option value="true" ${plan.active ? "selected" : ""}>فعّالة (تظهر للمطاعم)</option>
+          <option value="false" ${!plan.active ? "selected" : ""}>معطّلة</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close>إلغاء</button>
+        <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
+      </div>
+    </form>
+  `);
+
+  $("#editPlanForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = $("#editPlanError");
+    clearError(errBox);
+    const fd = new FormData(e.target);
+    const body = Object.fromEntries(fd.entries());
+    body.active = body.active === "true";
+    body.max_tables = Number(body.max_tables);
+    if (!body.price_monthly) delete body.price_monthly;
+    else body.price_monthly = Number(body.price_monthly);
+    try {
+      // RLS "super admin updates plans" — تحديث مباشر، بلا حاجة لأي RPC.
+      unwrap(await sb.from("plans").update(body).eq("id", plan.id).select().single());
+      closeModal();
+      loadPlans();
+    } catch (err) {
+      showError(errBox, err.message);
+    }
+  });
+}
+
+// ---------------------------------------------------------------------
+// القوالب (Phase 2)
+// ---------------------------------------------------------------------
+let TEMPLATES_CACHE = [];
+
+async function loadTemplates() {
+  const grid = $("#templatesGrid");
+  try {
+    // RLS "super admin reads all template versions" — يشوف كل الحالات هون
+    // (installed/active/rejected)، بخلاف لوحة صاحب المطعم اللي بتشوف active+مدمج فقط.
+    const rows = unwrap(
+      await sb
+        .from("menu_templates")
+        .select("id, name, template_versions(id, version, is_builtin, entry_file, storage_path, status, manifest, created_at, activated_at)")
+        .order("name")
+    );
+    TEMPLATES_CACHE = rows.map((tpl) => ({
+      id: tpl.id,
+      name: tpl.name,
+      versions: (tpl.template_versions || []).map((v) => ({
+        ...v,
+        preview_url: v.is_builtin ? null : `${window.SUPABASE_URL}/storage/v1/object/public/templates/${v.storage_path}/${v.entry_file}`,
+      })),
+    }));
+    const versions = TEMPLATES_CACHE.flatMap((tpl) => tpl.versions.map((v) => ({ ...v, templateName: tpl.name, templateId: tpl.id })));
+    if (!versions.length) {
+      grid.innerHTML = `<div class="empty-state">لا توجد قوالب بعد</div>`;
+      return;
+    }
+    grid.innerHTML = versions.map(renderTemplateCard).join("");
+    bindTemplateActions();
+  } catch (err) {
+    grid.innerHTML = "";
+    showError($("#globalError"), err.message);
+  }
+}
+
+function templateBadge(v) {
+  if (v.is_builtin) return `<span class="badge badge-active">مدمج</span>`;
+  if (v.status === "active") return `<span class="badge badge-active">مفعّل للاختيار</span>`;
+  if (v.status === "rejected") return `<span class="badge badge-suspended">مرفوض</span>`;
+  return `<span class="badge badge-cancelled">مُنصّب (غير معروض)</span>`;
+}
+
+function renderTemplateCard(v) {
+  return `
+    <div class="plan-card" data-template-id="${v.templateId}" data-version-id="${v.id}">
+      <h3>${escapeHtml(v.templateName)}</h3>
+      <div class="plan-price">v${escapeHtml(v.version)} — ${templateBadge(v)}</div>
+      <div class="plan-meta">${(v.manifest?.supports || []).join(" · ") || "—"}</div>
+      <div class="plan-actions">
+        ${v.preview_url ? `<a class="btn btn-sm btn-ghost" href="${v.preview_url}" target="_blank">معاينة ↗</a>` : ""}
+        ${!v.is_builtin && v.status !== "active" ? `<button class="btn btn-sm btn-primary act-activate-template">تفعيل</button>` : ""}
+        ${!v.is_builtin && v.status === "active" ? `<button class="btn btn-sm btn-ghost act-deactivate-template">إلغاء التفعيل</button>` : ""}
+      </div>
+    </div>`;
+}
+
+function bindTemplateActions() {
+  $$(".act-activate-template").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const card = btn.closest(".plan-card");
+      try {
+        await callRpc("rpc_activate_template_version", {
+          p_template_id: Number(card.dataset.templateId),
+          p_version_id: Number(card.dataset.versionId),
+        });
+        loadTemplates();
+      } catch (err) {
+        showError($("#globalError"), err.message);
+      }
+    });
+  });
+  $$(".act-deactivate-template").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const card = btn.closest(".plan-card");
+      try {
+        await callRpc("rpc_deactivate_template_version", {
+          p_template_id: Number(card.dataset.templateId),
+          p_version_id: Number(card.dataset.versionId),
+        });
+        loadTemplates();
+      } catch (err) {
+        showError($("#globalError"), err.message);
+      }
+    });
+  });
+}
+
+// ---- نافذة رفع قالب جديد ----
+$("#openUploadTemplate").addEventListener("click", () => {
+  openModal(`
+    <h3>رفع قالب جديد</h3>
+    <div id="uploadTemplateError"></div>
+    <p style="font-size:0.85rem; color:var(--ink-soft); font-weight:600; margin-bottom:1rem;">
+      ملف ZIP لازم يحتوي manifest.json صالح بالجذر + entry file موجود فعليًا.
+      يتفحص أمنيًا (مسارات آمنة، بلا أسرار/سكربتات) قبل أي تنصيب.
+    </p>
+    <form id="uploadTemplateForm">
+      <div class="field"><label>ملف القالب (ZIP)</label><input type="file" name="zip" accept=".zip" required></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" data-close>إلغاء</button>
+        <button type="submit" class="btn btn-primary">رفع وفحص</button>
+      </div>
+    </form>
+  `);
+
+  $("#uploadTemplateForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const errBox = $("#uploadTemplateError");
+    clearError(errBox);
+    const submitBtn = e.target.querySelector("button[type=submit]");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "جاري الرفع والفحص...";
+    try {
+      const fd = new FormData(e.target);
+      const file = fd.get("zip");
+      if (!file || !file.size) throw new Error("اختر ملف ZIP أولاً");
+      // upload-template Edge Function: فحص أمني كامل (مسارات/امتدادات/أحجام/manifest)
+      // ثم رفع فعلي لـSupabase Storage وتسجيل بجداول menu_templates/template_versions
+      // بصلاحية service-role — كل هذا غير ممكن من الفرونت إند مباشرة (bucket templates
+      // مقفول كليًا عن anon/authenticated، راجع phase3-supabase-native.sql § 6).
+      // الملف يُرسل كبايتات خام (Blob) — بلا multipart، تبسيطًا.
+      await callFunction("upload-template", file);
+      closeModal();
+      loadTemplates();
+    } catch (err) {
+      showError(errBox, err.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = "رفع وفحص";
+    }
+  });
+});
+
+// ---------------------------------------------------------------------
+// نوافذ منبثقة عامة
+// ---------------------------------------------------------------------
+function openModal(innerHtml) {
+  const root = $("#modalRoot");
+  root.innerHTML = `<div class="modal-overlay"><div class="modal">${innerHtml}</div></div>`;
+  root.querySelector(".modal-overlay").addEventListener("click", (e) => {
+    if (e.target.classList.contains("modal-overlay")) closeModal();
+  });
+  $$("[data-close]", root).forEach((btn) => btn.addEventListener("click", closeModal));
+}
+function closeModal() { $("#modalRoot").innerHTML = ""; }
+</script>
+</body>
+</html>

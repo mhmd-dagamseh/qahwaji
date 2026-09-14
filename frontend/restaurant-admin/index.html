@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحكم المطعم | قهوجي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<script src="../assets/supabase-config.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --paper: #fff8ec; --paper-warm: #ffefd8; --ink: #1c1006; --ink-soft: #6b5843;
+    --red: #ff431a; --red-dark: #c22400; --yellow: #ffc229; --green: #1f8a4c;
+    --gray: #9a8a76; --line: #e7d3b4;
+    --font-display: 'Lalezar', sans-serif; --font-body: 'Tajawal', sans-serif;
+    --hard: 5px 5px 0 var(--ink); --hard-sm: 3px 3px 0 var(--ink);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: var(--font-body); background: var(--paper); color: var(--ink);
+    min-height:100vh; -webkit-font-smoothing:antialiased;
+    background-image: radial-gradient(var(--line) 1.3px, transparent 1.3px); background-size:26px 26px;
+  }
+  h1,h2,h3,h4 { font-family: var(--font-display); font-weight:400; }
+  button, input, select, textarea { font-family: var(--font-body); }
+  .hidden { display:none !important; }
+
+  #loginScreen { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
+  .login-card { background:white; border:2.5px solid var(--ink); border-radius:18px; box-shadow: var(--hard); padding:2.5rem; width:100%; max-width:380px; }
+  .login-card .logo-mark { width:46px; height:46px; background:var(--red); border:2.5px solid var(--ink); border-radius:11px; display:flex; align-items:center; justify-content:center; color:white; margin-bottom:1.25rem; transform:rotate(-4deg); font-family:var(--font-display); font-size:1.4rem; }
+  .login-card h1 { font-size:1.6rem; margin-bottom:0.4rem; }
+  .login-card p.sub { color:var(--ink-soft); font-size:0.9rem; margin-bottom:1.75rem; font-weight:500; }
+
+  .field { margin-bottom:1.1rem; }
+  .field label { display:block; font-size:0.85rem; font-weight:800; margin-bottom:0.4rem; }
+  .field input, .field select, .field textarea {
+    width:100%; padding:0.75rem 0.9rem; border:2px solid var(--ink); border-radius:10px;
+    font-size:0.95rem; background:var(--paper); color:var(--ink); font-weight:600;
+  }
+  .field input[type=color] { padding:0.3rem; height:46px; }
+  .field input:focus, .field select:focus, .field textarea:focus { outline:3px solid var(--red); outline-offset:1px; }
+  .field-hint { font-size:0.78rem; color:var(--ink-soft); margin-top:0.3rem; font-weight:500; }
+  .field-row { display:flex; gap:0.8rem; }
+  .field-row .field { flex:1; }
+  .checkbox-row { display:flex; align-items:center; gap:0.5rem; margin-bottom:0.8rem; }
+  .checkbox-row input { width:auto; }
+  .checkbox-row label { margin:0; font-weight:700; font-size:0.88rem; }
+
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:0.5rem; padding:0.8rem 1.4rem; font-weight:800; font-size:0.9rem; border-radius:10px; border:2.5px solid var(--ink); cursor:pointer; transition:all 0.15s ease; text-decoration:none; }
+  .btn:active { transform:translate(3px,3px); box-shadow:none !important; }
+  .btn-primary { background:var(--red); color:white; box-shadow:var(--hard-sm); }
+  .btn-primary:hover { transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--ink); }
+  .btn-dark { background:var(--ink); color:var(--paper); box-shadow:var(--hard-sm); }
+  .btn-dark:hover { transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--red); }
+  .btn-green { background:var(--green); color:white; box-shadow:var(--hard-sm); }
+  .btn-ghost { background:transparent; color:var(--ink); }
+  .btn-ghost:hover { background:var(--paper-warm); }
+  .btn-sm { padding:0.5rem 0.9rem; font-size:0.8rem; border-radius:8px; }
+  .btn-block { width:100%; }
+  .btn[disabled] { opacity:0.55; cursor:not-allowed; pointer-events:none; }
+
+  .error-banner, .success-banner { font-weight:700; padding:0.8rem 1rem; border-radius:10px; margin-bottom:1.1rem; font-size:0.88rem; }
+  .error-banner { background:#ffe0d6; border:2px solid var(--red-dark); color:var(--red-dark); }
+  .success-banner { background:#d6f5e0; border:2px solid var(--green); color:#0d5c2e; }
+
+  #app { min-height:100vh; }
+  header.topbar { position:sticky; top:0; z-index:50; background:var(--paper); border-bottom:3px solid var(--ink); display:flex; align-items:center; justify-content:space-between; padding:0.9rem 1.75rem; flex-wrap:wrap; gap:0.75rem; }
+  .topbar .brand { display:flex; align-items:center; gap:0.6rem; font-family:var(--font-display); font-size:1.4rem; }
+  .topbar .brand .logo-mark { width:32px; height:32px; background:var(--red); border:2px solid var(--ink); border-radius:9px; display:flex; align-items:center; justify-content:center; color:white; transform:rotate(-4deg); }
+  .topbar .who { font-size:0.85rem; color:var(--ink-soft); font-weight:700; }
+
+  .tabs { display:flex; gap:0.5rem; padding:1rem 1.75rem 0; flex-wrap:wrap; }
+  .tab-btn { padding:0.6rem 1.1rem; border-radius:100px; border:2px solid var(--ink); background:white; font-weight:800; font-size:0.85rem; cursor:pointer; }
+  .tab-btn.active { background:var(--ink); color:var(--paper); }
+
+  main { padding:1.5rem 1.75rem 4rem; max-width:900px; }
+  .card { background:white; border:2.5px solid var(--ink); border-radius:16px; padding:1.5rem; margin-bottom:1.25rem; box-shadow:var(--hard-sm); }
+  .card h3 { font-size:1.2rem; margin-bottom:1rem; }
+
+  table.data-table { width:100%; border-collapse:collapse; font-size:0.88rem; }
+  table.data-table th, table.data-table td { text-align:start; padding:0.6rem 0.5rem; border-bottom:1px solid var(--line); }
+  table.data-table th { font-weight:800; color:var(--ink-soft); font-size:0.78rem; text-transform:uppercase; }
+  .badge { display:inline-block; padding:0.2rem 0.6rem; border-radius:100px; font-size:0.72rem; font-weight:800; border:1.5px solid var(--ink); }
+  .badge-green { background:#d6f5e0; } .badge-gray { background:#eee; } .badge-yellow { background:#fff3d6; }
+  .row-actions { display:flex; gap:0.4rem; flex-wrap:wrap; }
+  .empty-note { color:var(--ink-soft); font-weight:600; padding:1rem 0; text-align:center; }
+
+  .url-box { display:flex; gap:0.5rem; align-items:center; background:var(--paper-warm); border:2px dashed var(--line); border-radius:10px; padding:0.5rem 0.7rem; font-size:0.78rem; direction:ltr; overflow-x:auto; white-space:nowrap; }
+
+  .template-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
+  .template-option { border:2.5px solid var(--ink); border-radius:14px; padding:1rem; cursor:pointer; background:white; }
+  .template-option.selected { background:var(--paper-warm); box-shadow:var(--hard-sm); }
+  .template-option h4 { font-size:1rem; margin-bottom:0.3rem; }
+  .template-option .meta { font-size:0.75rem; color:var(--ink-soft); font-weight:600; }
+
+  .logo-preview { width:64px; height:64px; border-radius:12px; border:2px solid var(--ink); object-fit:cover; background:var(--paper-warm); }
+</style>
+</head>
+<body>
+
+  <div id="loginScreen">
+    <div class="login-card">
+      <div class="logo-mark">ق</div>
+      <h1>لوحة تحكم المطعم</h1>
+      <p class="sub">لأصحاب المطاعم والكاشير — المنتجات، الطاولات، البراند، وقالب المنيو</p>
+      <div id="loginError" class="error-banner hidden"></div>
+      <form id="loginForm">
+        <div class="field"><label>البريد الإلكتروني</label><input type="email" name="email" required></div>
+        <div class="field"><label>كلمة المرور</label><input type="password" name="password" required></div>
+        <button class="btn btn-primary btn-block" type="submit">دخول</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <div class="brand"><div class="logo-mark">ق</div> لوحة المطعم</div>
+      <div style="display:flex; align-items:center; gap:1rem;">
+        <span class="who" id="whoAmI"></span>
+        <a class="btn btn-ghost btn-sm" id="openCashierBtn" href="../cashier/" target="_blank">شاشة الطلبات ↗</a>
+        <button class="btn btn-ghost btn-sm" id="logoutBtn">خروج</button>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="branding">البراند</button>
+      <button class="tab-btn" data-tab="products">المنتجات</button>
+      <button class="tab-btn" data-tab="tables">الطاولات (NFC)</button>
+      <button class="tab-btn" data-tab="template">قالب المنيو</button>
+    </nav>
+
+    <main>
+      <div id="globalMsg"></div>
+
+      <!-- ===== البراند ===== -->
+      <section id="tab-branding">
+        <div class="card">
+          <h3>الشعار والألوان</h3>
+          <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.2rem;">
+            <img id="logoPreview" class="logo-preview" alt="logo">
+            <div>
+              <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml">
+              <div class="field-hint">PNG/JPG/WEBP/SVG — حتى 5MB</div>
+            </div>
+          </div>
+          <form id="brandingForm">
+            <div class="field-row">
+              <div class="field"><label>اللون الأساسي (Primary)</label><input type="color" name="primary"></div>
+              <div class="field"><label>اللون الثانوي (Secondary)</label><input type="color" name="secondary"></div>
+              <div class="field"><label>لون التمييز (Accent)</label><input type="color" name="accent"></div>
+            </div>
+            <button class="btn btn-primary" type="submit">حفظ البراند</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- ===== المنتجات ===== -->
+      <section id="tab-products" class="hidden">
+        <div class="card">
+          <h3>إضافة منتج</h3>
+          <form id="productForm">
+            <div class="field-row">
+              <div class="field"><label>الاسم</label><input type="text" name="name" required></div>
+              <div class="field"><label>السعر</label><input type="number" step="0.01" min="0" name="price" required></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>الفئة</label><input type="text" name="category" placeholder="عام"></div>
+              <div class="field"><label>متاح؟</label>
+                <select name="available"><option value="true">نعم</option><option value="false">لا</option></select>
+              </div>
+            </div>
+            <button class="btn btn-primary" type="submit">إضافة</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3>المنتجات الحالية</h3>
+          <div id="productsList"></div>
+        </div>
+      </section>
+
+      <!-- ===== الطاولات ===== -->
+      <section id="tab-tables" class="hidden">
+        <div class="card">
+          <h3>إضافة طاولات</h3>
+          <form id="tableForm">
+            <div class="field-row">
+              <div class="field"><label>رقم طاولة واحدة</label><input type="number" name="table_number" min="1"></div>
+              <div class="field"><label>أو bulk: عدد الطاولات (1..N)</label><input type="number" name="count" min="1" max="300"></div>
+            </div>
+            <button class="btn btn-primary" type="submit">إضافة</button>
+            <div class="field-hint">عبّي حقل واحد بس — رقم مفرد أو عدد bulk.</div>
+          </form>
+        </div>
+        <div class="card">
+          <h3>الطاولات + رابط المنيو (لكتابته على بطاقة NFC / توليد QR)</h3>
+          <div id="tablesList"></div>
+        </div>
+      </section>
+
+      <!-- ===== قالب المنيو ===== -->
+      <section id="tab-template" class="hidden">
+        <div class="card">
+          <h3>القالب الحالي</h3>
+          <div id="currentTemplateBox"></div>
+        </div>
+        <div class="card">
+          <h3>اختيار قالب</h3>
+          <div id="templateOptions" class="template-grid"></div>
+        </div>
+        <div class="card">
+          <h3>إعدادات عرض المنيو</h3>
+          <form id="templateSettingsForm">
+            <div class="checkbox-row"><input type="checkbox" name="show_search" id="show_search"><label for="show_search">إظهار خانة البحث</label></div>
+            <div class="checkbox-row"><input type="checkbox" name="show_categories" id="show_categories"><label for="show_categories">إظهار تبويبات الفئات</label></div>
+            <div class="checkbox-row"><input type="checkbox" name="show_images" id="show_images"><label for="show_images">إظهار صور المنتجات</label></div>
+            <div class="field-row">
+              <div class="field"><label>شكل العرض</label>
+                <select name="layout"><option value="grid">شبكة (Grid)</option><option value="list">قائمة (List)</option></select>
+              </div>
+              <div class="field"><label>نمط البطاقة</label>
+                <select name="card_style"><option value="default">افتراضي</option><option value="compact">مضغوط</option><option value="minimal">بسيط</option></select>
+              </div>
+            </div>
+            <button class="btn btn-primary" type="submit">حفظ الإعدادات</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3>السجل (Rollback)</h3>
+          <div id="templateHistory"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+<script>
+// ======================================================================
+// إعدادات — SUPABASE_URL/SUPABASE_ANON_KEY من ../assets/supabase-config.js.
+// CUSTOMER_MENU_BASE يضل يدوي: عنوان صفحة المنيو (frontend/menu) بعد نشرها
+// فعليًا على GitHub Pages — يُستخدم فقط لبناء رابط كل طاولة (QR/NFC).
+// ======================================================================
+const CUSTOMER_MENU_BASE = "https://YOUR-USERNAME.github.io/YOUR-REPO/menu/"; // TODO: بدّلها بعنوان صفحة المنيو الفعلي بعد النشر
+
+const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+  // بلا حفظ الجلسة بـlocalStorage عن قصد — نفس القرار الأمني الأصلي (دخول من جديد
+  // بعد أي تحديث للصفحة)، مطابق تمامًا لسلوك "TOKEN بالذاكرة فقط" بالنسخة القديمة.
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+let CURRENT_ADMIN = null; // { id, email, role, restaurantId, restaurantName }
+let RESTAURANT = null;
+let TEMPLATES = [];
+
+const $ = (sel, root) => (root || document).querySelector(sel);
+const $$ = (sel, root) => [...(root || document).querySelectorAll(sel)];
+
+function showGlobalMsg(message, kind) {
+  const box = $("#globalMsg");
+  box.innerHTML = `<div class="${kind === "error" ? "error-banner" : "success-banner"}">${escapeHtml(message)}</div>`;
+  setTimeout(() => { box.innerHTML = ""; }, 5000);
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// نداء RPC عام — يقابل دالة api() القديمة، لكن فوق Supabase RPC بدل REST مخصص.
+async function callRpc(name, params) {
+  const { data, error } = await sb.rpc(name, params || {});
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// قراءة/كتابة جدول عام مع رمي رسالة الخطأ كـException عادي (نفس أسلوب api() القديمة)
+function unwrap({ data, error }) {
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// ============================================================
+// تسجيل الدخول عبر Supabase Auth مباشرة
+// ============================================================
+$("#loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  $("#loginError").classList.add("hidden");
+  try {
+    const email = form.get("email");
+    const password = form.get("password");
+
+    const { error: signInError } = await sb.auth.signInWithPassword({ email, password });
+    if (signInError) throw new Error("فشل تسجيل الدخول: " + signInError.message);
+
+    const staffRow = unwrap(
+      await sb.from("restaurant_admins").select("id, email, role, restaurant_id, restaurants(name, status)").maybeSingle()
+    );
+    if (!staffRow) {
+      await sb.auth.signOut();
+      throw new Error("هذا الحساب غير مرتبط بأي مطعم — تواصل مع إدارة المنصة");
+    }
+    if (!["trial", "active"].includes(staffRow.restaurants?.status)) {
+      await sb.auth.signOut();
+      throw new Error("حساب المطعم موقوف أو ملغي حاليًا");
+    }
+
+    CURRENT_ADMIN = {
+      id: staffRow.id,
+      email: staffRow.email,
+      role: staffRow.role,
+      restaurantId: staffRow.restaurant_id,
+      restaurantName: staffRow.restaurants?.name,
+    };
+
+    $("#whoAmI").textContent = `${CURRENT_ADMIN.restaurantName} · ${CURRENT_ADMIN.email} · ${CURRENT_ADMIN.role === "owner" ? "مالك" : "كاشير"}`;
+    $("#loginScreen").classList.add("hidden");
+    $("#app").classList.remove("hidden");
+    await loadAll();
+  } catch (err) {
+    $("#loginError").textContent = err.message;
+    $("#loginError").classList.remove("hidden");
+  }
+});
+
+$("#logoutBtn").addEventListener("click", async () => {
+  await sb.auth.signOut();
+  location.reload();
+});
+
+// ============================================================
+// تبويبات
+// ============================================================
+$$(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    $$(".tab-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    $$("main > section").forEach((s) => s.classList.add("hidden"));
+    $("#tab-" + btn.dataset.tab).classList.remove("hidden");
+  });
+});
+
+async function loadAll() {
+  await Promise.all([loadRestaurant(), loadProducts(), loadTables(), loadTemplates(), loadMenuTemplateState()]);
+}
+
+// ============================================================
+// البراند
+// ============================================================
+async function loadRestaurant() {
+  RESTAURANT = unwrap(await sb.from("restaurants").select("*").eq("id", CURRENT_ADMIN.restaurantId).single());
+  const colors = RESTAURANT.brand_colors || {};
+  $("[name=primary]", $("#brandingForm")).value = colors.primary || "#ff431a";
+  $("[name=secondary]", $("#brandingForm")).value = colors.secondary || "#1c1006";
+  $("[name=accent]", $("#brandingForm")).value = colors.accent || "#ffc229";
+  $("#logoPreview").src = RESTAURANT.logo_url || "";
+}
+
+$("#brandingForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  try {
+    RESTAURANT = await callRpc("rpc_update_restaurant_branding", {
+      p_restaurant_id: CURRENT_ADMIN.restaurantId,
+      p_brand_colors: { primary: form.get("primary"), secondary: form.get("secondary"), accent: form.get("accent") },
+    });
+    showGlobalMsg("تم حفظ البراند", "success");
+  } catch (err) {
+    showGlobalMsg(err.message, "error");
+  }
+});
+
+$("#logoFileInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    // رفع مباشر لـSupabase Storage من الفرونت إند (بدل POST متعدد الأجزاء للباكند
+    // القديم) — bucket "restaurant-assets" مقفول بالكتابة على owner مطعمه فقط عبر
+    // RLS (راجع phase3-supabase-native.sql § 6)، والمسار لازم يبدأ بمعرّف المطعم
+    // بالضبط متل ما كان storage.js يبنيه.
+    const ext = (file.name.split(".").pop() || "png").toLowerCase();
+    const path = `${CURRENT_ADMIN.restaurantId}/logo-${Date.now()}.${ext}`;
+    const { error: uploadError } = await sb.storage
+      .from("restaurant-assets")
+      .upload(path, file, { contentType: file.type || "image/png", upsert: true });
+    if (uploadError) throw new Error(uploadError.message);
+
+    const { data: publicUrlData } = sb.storage.from("restaurant-assets").getPublicUrl(path);
+    RESTAURANT = await callRpc("rpc_update_restaurant_branding", {
+      p_restaurant_id: CURRENT_ADMIN.restaurantId,
+      p_logo_url: publicUrlData.publicUrl,
+    });
+    $("#logoPreview").src = RESTAURANT.logo_url;
+    showGlobalMsg("تم رفع الشعار", "success");
+  } catch (err) {
+    showGlobalMsg(err.message, "error");
+  }
+});
+
+// ============================================================
+// المنتجات
+// ============================================================
+async function loadProducts() {
+  const products = unwrap(
+    await sb.from("products").select("*").eq("restaurant_id", CURRENT_ADMIN.restaurantId).order("category").order("name")
+  );
+  const box = $("#productsList");
+  if (products.length === 0) { box.innerHTML = `<div class="empty-note">لا توجد منتجات بعد</div>`; return; }
+  box.innerHTML = `<table class="data-table"><thead><tr>
+      <th>صورة</th><th>الاسم</th><th>الفئة</th><th>السعر</th><th>الحالة</th><th></th>
+    </tr></thead><tbody>${products.map(productRow).join("")}</tbody></table>`;
+
+  $$("[data-toggle-avail]", box).forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = btn.dataset.toggleAvail;
+      const p = products.find((x) => String(x.id) === id);
+      try {
+        await callRpc("rpc_upsert_product", {
+          p_restaurant_id: CURRENT_ADMIN.restaurantId,
+          p_product_id: Number(id),
+          p_available: !p.available,
+        });
+        await loadProducts();
+      } catch (err) { showGlobalMsg(err.message, "error"); }
+    });
+  });
+  $$("[data-delete-product]", box).forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("حذف هذا المنتج؟")) return;
+      try {
+        await callRpc("rpc_delete_product", {
+          p_restaurant_id: CURRENT_ADMIN.restaurantId,
+          p_product_id: Number(btn.dataset.deleteProduct),
+        });
+        await loadProducts();
+      } catch (err) { showGlobalMsg(err.message, "error"); }
+    });
+  });
+  $$("[data-upload-image]", box).forEach((input) => {
+    input.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const productId = input.dataset.uploadImage;
+        const ext = (file.name.split(".").pop() || "png").toLowerCase();
+        const path = `${CURRENT_ADMIN.restaurantId}/products/${productId}-${Date.now()}.${ext}`;
+        const { error: uploadError } = await sb.storage
+          .from("restaurant-assets")
+          .upload(path, file, { contentType: file.type || "image/png", upsert: true });
+        if (uploadError) throw new Error(uploadError.message);
+
+        const { data: publicUrlData } = sb.storage.from("restaurant-assets").getPublicUrl(path);
+        await callRpc("rpc_upsert_product", {
+          p_restaurant_id: CURRENT_ADMIN.restaurantId,
+          p_product_id: Number(productId),
+          p_image_url: publicUrlData.publicUrl,
+        });
+        await loadProducts();
+        showGlobalMsg("تم رفع صورة المنتج", "success");
+      } catch (err) { showGlobalMsg(err.message, "error"); }
+    });
+  });
+}
+
+function productRow(p) {
+  return `<tr>
+    <td>
+      <img src="${p.image_url || ""}" style="width:36px;height:36px;border-radius:8px;object-fit:cover;background:var(--paper-warm);border:1.5px solid var(--ink);">
+      <input type="file" data-upload-image="${p.id}" accept="image/*" style="display:block; font-size:0.65rem; margin-top:0.2rem;">
+    </td>
+    <td>${escapeHtml(p.name)}</td>
+    <td>${escapeHtml(p.category)}</td>
+    <td>${Number(p.price).toFixed(2)}</td>
+    <td><span class="badge ${p.available ? "badge-green" : "badge-gray"}">${p.available ? "متاح" : "غير متاح"}</span></td>
+    <td class="row-actions">
+      <button class="btn btn-ghost btn-sm" data-toggle-avail="${p.id}">${p.available ? "إخفاء" : "إظهار"}</button>
+      <button class="btn btn-ghost btn-sm" data-delete-product="${p.id}">حذف</button>
+    </td>
+  </tr>`;
+}
+
+$("#productForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  try {
+    await callRpc("rpc_upsert_product", {
+      p_restaurant_id: CURRENT_ADMIN.restaurantId,
+      p_name: form.get("name"),
+      p_price: Number(form.get("price")),
+      p_category: form.get("category") || null,
+      p_available: form.get("available") === "true",
+    });
+    e.target.reset();
+    await loadProducts();
+    showGlobalMsg("تمت الإضافة", "success");
+  } catch (err) { showGlobalMsg(err.message, "error"); }
+});
+
+// ============================================================
+// الطاولات
+// ============================================================
+function menuUrlFor(tableToken) {
+  return `${CUSTOMER_MENU_BASE}?r=${encodeURIComponent(RESTAURANT.slug)}&t=${encodeURIComponent(tableToken)}`;
+}
+
+async function loadTables() {
+  const tables = unwrap(
+    await sb.from("restaurant_tables").select("*").eq("restaurant_id", CURRENT_ADMIN.restaurantId).order("table_number")
+  );
+  const box = $("#tablesList");
+  if (tables.length === 0) { box.innerHTML = `<div class="empty-note">لا توجد طاولات بعد</div>`; return; }
+  box.innerHTML = tables
+    .map(
+      (t) => `
+    <div style="padding:0.8rem 0; border-bottom:1px solid var(--line);">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
+        <strong>طاولة #${t.table_number}</strong>
+        <span class="badge ${t.is_active ? "badge-green" : "badge-gray"}">${t.is_active ? "مفعّلة" : "غير مفعّلة"}</span>
+      </div>
+      <div class="url-box">
+        <span style="flex:1;">${menuUrlFor(t.card_token)}</span>
+        <button class="btn btn-ghost btn-sm" data-copy="${menuUrlFor(t.card_token)}">نسخ</button>
+      </div>
+      ${t.is_active ? `<button class="btn btn-ghost btn-sm" style="margin-top:0.5rem;" data-deactivate-table="${t.id}">إلغاء تفعيل</button>` : ""}
+    </div>`
+    )
+    .join("");
+
+  $$("[data-copy]", box).forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(btn.dataset.copy);
+      showGlobalMsg("تم نسخ الرابط", "success");
+    });
+  });
+  $$("[data-deactivate-table]", box).forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("إلغاء تفعيل هذه الطاولة؟")) return;
+      try {
+        await callRpc("rpc_deactivate_table", {
+          p_restaurant_id: CURRENT_ADMIN.restaurantId,
+          p_table_id: Number(btn.dataset.deactivateTable),
+        });
+        await loadTables();
+      } catch (err) { showGlobalMsg(err.message, "error"); }
+    });
+  });
+}
+
+$("#tableForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  const tableNumber = form.get("table_number");
+  const count = form.get("count");
+  try {
+    if (tableNumber) {
+      await callRpc("rpc_create_table", {
+        p_restaurant_id: CURRENT_ADMIN.restaurantId,
+        p_table_number: Number(tableNumber),
+      });
+    } else if (count) {
+      // نفس دلالة "count" الأصلية بالضبط: أرقام 1..count (بلا تصادم — RPC تتجاهل
+      // بصمت أي رقم مستخدم مسبقًا via on conflict do nothing).
+      const numbers = Array.from({ length: Number(count) }, (_, i) => i + 1);
+      await callRpc("rpc_bulk_create_tables", { p_restaurant_id: CURRENT_ADMIN.restaurantId, p_table_numbers: numbers });
+    } else {
+      throw new Error("عبّي رقم طاولة واحدة أو عدد bulk");
+    }
+    e.target.reset();
+    await loadTables();
+    showGlobalMsg("تمت الإضافة", "success");
+  } catch (err) { showGlobalMsg(err.message, "error"); }
+});
+
+// ============================================================
+// قالب المنيو
+// ============================================================
+async function loadTemplates() {
+  // RLS "staff reads active or builtin versions" يفلتر تلقائيًا: أدمن المطعم
+  // بيشوف بس النسخ active + المدمج (بلا أي شرط إضافي هون بالـFrontend).
+  const rows = unwrap(
+    await sb
+      .from("menu_templates")
+      .select("id, name, slug, template_versions(id, version, is_builtin, entry_file, storage_path, status, created_at, activated_at)")
+      .order("name")
+  );
+  TEMPLATES = rows.map((tpl) => ({
+    id: tpl.id,
+    name: tpl.name,
+    versions: (tpl.template_versions || []).map((v) => ({
+      ...v,
+      preview_url: v.is_builtin ? null : `${window.SUPABASE_URL}/storage/v1/object/public/templates/${v.storage_path}/${v.entry_file}`,
+    })),
+  }));
+  renderTemplateOptions();
+}
+
+function renderTemplateOptions() {
+  const box = $("#templateOptions");
+  const versions = TEMPLATES.flatMap((tpl) => tpl.versions.map((v) => ({ ...v, templateName: tpl.name })));
+  if (versions.length === 0) { box.innerHTML = `<div class="empty-note">لا توجد قوالب متاحة بعد</div>`; return; }
+  box.innerHTML = versions
+    .map(
+      (v) => `
+    <div class="template-option" data-select-version="${v.id}">
+      <h4>${escapeHtml(v.templateName)}</h4>
+      <div class="meta">v${escapeHtml(v.version)} ${v.is_builtin ? "· مدمج" : ""}</div>
+      ${v.preview_url ? `<a class="btn btn-ghost btn-sm" style="margin-top:0.6rem;" href="${v.preview_url}" target="_blank">فتح الملف الخام ↗</a>` : ""}
+    </div>`
+    )
+    .join("");
+
+  $$("[data-select-version]", box).forEach((el) => {
+    el.addEventListener("click", async () => {
+      try {
+        await callRpc("rpc_select_menu_template", {
+          p_restaurant_id: CURRENT_ADMIN.restaurantId,
+          p_template_version_id: Number(el.dataset.selectVersion),
+        });
+        showGlobalMsg("تم تفعيل القالب — افتح رابط أي طاولة لمعاينته ببيانات مطعمك الفعلية", "success");
+        await loadMenuTemplateState();
+      } catch (err) { showGlobalMsg(err.message, "error"); }
+    });
+  });
+}
+
+async function loadMenuTemplateState() {
+  const currentRow = unwrap(
+    await sb
+      .from("restaurant_menu_templates")
+      .select("template_version_id, settings, activated_at, template_versions(version, is_builtin, menu_templates(name))")
+      .eq("restaurant_id", CURRENT_ADMIN.restaurantId)
+      .eq("is_current", true)
+      .maybeSingle()
+  );
+  const historyRows = unwrap(
+    await sb
+      .from("restaurant_menu_templates")
+      .select("template_version_id, activated_at, deactivated_at, template_versions(version, menu_templates(name))")
+      .eq("restaurant_id", CURRENT_ADMIN.restaurantId)
+      .order("activated_at", { ascending: false })
+      .limit(20)
+  );
+
+  const box = $("#currentTemplateBox");
+  if (!currentRow) {
+    box.innerHTML = `<div class="empty-note">ما في قالب مفعّل صراحة — القالب الافتراضي المدمج شغّال تلقائيًا</div>`;
+  } else {
+    const tv = currentRow.template_versions;
+    box.innerHTML = `<strong>${escapeHtml(tv.menu_templates.name)}</strong> — v${escapeHtml(tv.version)}
+      ${tv.is_builtin ? "<span class=\"badge badge-gray\">مدمج</span>" : ""}
+      <div class="field-hint">مفعّل منذ ${new Date(currentRow.activated_at).toLocaleString("ar")}</div>`;
+
+    const settings = currentRow.settings || {};
+    const form = $("#templateSettingsForm");
+    $("[name=show_search]", form).checked = settings.show_search !== false;
+    $("[name=show_categories]", form).checked = settings.show_categories !== false;
+    $("[name=show_images]", form).checked = settings.show_images !== false;
+    $("[name=layout]", form).value = settings.layout || "grid";
+    $("[name=card_style]", form).value = settings.card_style || "default";
+  }
+
+  const historyBox = $("#templateHistory");
+  if (historyRows.length === 0) {
+    historyBox.innerHTML = `<div class="empty-note">لا يوجد سجل بعد</div>`;
+  } else {
+    historyBox.innerHTML = `<table class="data-table"><thead><tr><th>القالب</th><th>النسخة</th><th>من</th><th>إلى</th><th></th></tr></thead><tbody>
+      ${historyRows
+        .map(
+          (h) => `<tr>
+        <td>${escapeHtml(h.template_versions.menu_templates.name)}</td><td>v${escapeHtml(h.template_versions.version)}</td>
+        <td>${new Date(h.activated_at).toLocaleDateString("ar")}</td>
+        <td>${h.deactivated_at ? new Date(h.deactivated_at).toLocaleDateString("ar") : "الآن"}</td>
+        <td>${h.deactivated_at ? `<button class="btn btn-ghost btn-sm" data-rollback="${h.template_version_id}">استرجاع (Rollback)</button>` : ""}</td>
+      </tr>`
+        )
+        .join("")}
+    </tbody></table>`;
+
+    $$("[data-rollback]", historyBox).forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("استرجاع هذه النسخة القديمة كقالب حالي؟")) return;
+        try {
+          await callRpc("rpc_select_menu_template", {
+            p_restaurant_id: CURRENT_ADMIN.restaurantId,
+            p_template_version_id: Number(btn.dataset.rollback),
+          });
+          showGlobalMsg("تم الاسترجاع", "success");
+          await loadMenuTemplateState();
+        } catch (err) { showGlobalMsg(err.message, "error"); }
+      });
+    });
+  }
+}
+
+$("#templateSettingsForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  try {
+    await callRpc("rpc_update_menu_template_settings", {
+      p_restaurant_id: CURRENT_ADMIN.restaurantId,
+      p_settings: {
+        show_search: form.get("show_search") === "on",
+        show_categories: form.get("show_categories") === "on",
+        show_images: form.get("show_images") === "on",
+        layout: form.get("layout"),
+        card_style: form.get("card_style"),
+      },
+    });
+    showGlobalMsg("تم حفظ إعدادات العرض", "success");
+  } catch (err) { showGlobalMsg(err.message, "error"); }
+});
+</script>
+</body>
+</html>

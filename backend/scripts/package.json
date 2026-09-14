@@ -1,0 +1,13 @@
+{
+  "name": "qahwaji-saas-operator-scripts",
+  "private": true,
+  "type": "module",
+  "description": "سكربتات تشغيل يدوية (operator scripts) فقط — لا تُنشر ولا تُشغَّل كسيرفر. تستخدم service_role key محليًا على جهاز المشغّل حصرًا.",
+  "scripts": {
+    "create-super-admin": "node create-super-admin.mjs",
+    "migrate-existing-admins": "node migrate-existing-admins-to-auth.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}
