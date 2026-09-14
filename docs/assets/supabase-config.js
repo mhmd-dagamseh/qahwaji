@@ -21,5 +21,5 @@
  * عدّل القيمتين التاليتين بعد إنشاء مشروعك على Supabase:
  * Project Settings → API → Project URL / anon public key.
  */
-window.SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-window.SUPABASE_ANON_KEY = "YOUR-ANON-KEY";
+window.SUPABASE_URL = "https://bolqowksdygfglobsqxf.supabase.co";
+window.SUPABASE_ANON_KEY = "sb_publishable_CMSxN39kveUJTLt7s-R0HQ_PTI94yGJ";
