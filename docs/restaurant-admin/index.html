@@ -89,11 +89,6 @@
 
   .url-box { display:flex; gap:0.5rem; align-items:center; background:var(--paper-warm); border:2px dashed var(--line); border-radius:10px; padding:0.5rem 0.7rem; font-size:0.78rem; direction:ltr; overflow-x:auto; white-space:nowrap; }
 
-  .template-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
-  .template-option { border:2.5px solid var(--ink); border-radius:14px; padding:1rem; cursor:pointer; background:white; }
-  .template-option.selected { background:var(--paper-warm); box-shadow:var(--hard-sm); }
-  .template-option h4 { font-size:1rem; margin-bottom:0.3rem; }
-  .template-option .meta { font-size:0.75rem; color:var(--ink-soft); font-weight:600; }
 
   .logo-preview { width:64px; height:64px; border-radius:12px; border:2px solid var(--ink); object-fit:cover; background:var(--paper-warm); }
 </style>
@@ -128,7 +123,7 @@
       <button class="tab-btn active" data-tab="branding">البراند</button>
       <button class="tab-btn" data-tab="products">المنتجات</button>
       <button class="tab-btn" data-tab="tables">الطاولات (NFC)</button>
-      <button class="tab-btn" data-tab="template">قالب المنيو</button>
+      <button class="tab-btn" data-tab="template">إعدادات المنيو</button>
     </nav>
 
     <main>
@@ -199,16 +194,12 @@
         </div>
       </section>
 
-      <!-- ===== قالب المنيو ===== -->
+      <!-- ===== إعدادات المنيو =====
+           تبويب "قالب المنيو" (اختيار قالب / rollback) أُزيل عمدًا — النظام يعمل
+           الآن على قالب منيو واحد مدمج فقط لكل المطاعم (راجع
+           backend/db/phase5-single-template.sql). بقيت فقط إعدادات عرض المنيو،
+           وهي نقطة التوسّع المتاحة لتطوير آلية تعديل منيو أغنى لاحقًا. -->
       <section id="tab-template" class="hidden">
-        <div class="card">
-          <h3>القالب الحالي</h3>
-          <div id="currentTemplateBox"></div>
-        </div>
-        <div class="card">
-          <h3>اختيار قالب</h3>
-          <div id="templateOptions" class="template-grid"></div>
-        </div>
         <div class="card">
           <h3>إعدادات عرض المنيو</h3>
           <form id="templateSettingsForm">
@@ -225,10 +216,6 @@
             </div>
             <button class="btn btn-primary" type="submit">حفظ الإعدادات</button>
           </form>
-        </div>
-        <div class="card">
-          <h3>السجل (Rollback)</h3>
-          <div id="templateHistory"></div>
         </div>
       </section>
     </main>
@@ -250,7 +237,6 @@ const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, 
 
 let CURRENT_ADMIN = null; // { id, email, role, restaurantId, restaurantName }
 let RESTAURANT = null;
-let TEMPLATES = [];
 
 const $ = (sel, root) => (root || document).querySelector(sel);
 const $$ = (sel, root) => [...(root || document).querySelectorAll(sel)];
@@ -340,7 +326,7 @@ $$(".tab-btn").forEach((btn) => {
 });
 
 async function loadAll() {
-  await Promise.all([loadRestaurant(), loadProducts(), loadTables(), loadTemplates(), loadMenuTemplateState()]);
+  await Promise.all([loadRestaurant(), loadProducts(), loadTables(), loadMenuSettings()]);
 }
 
 // ============================================================
@@ -571,124 +557,32 @@ $("#tableForm").addEventListener("submit", async (e) => {
 });
 
 // ============================================================
-// قالب المنيو
+// إعدادات المنيو
+// النظام يعمل على قالب منيو واحد مدمج فقط لكل المطاعم (راجع
+// backend/db/phase5-single-template.sql) — لا اختيار/تبديل/rollback قوالب
+// بعد الآن. كل مطعم مضمون له سطر restaurant_menu_templates حالي جاهز تلقائيًا
+// (عند الإنشاء عبر rpc_create_restaurant، أو عبر الترحيل لو كان مطعم قديم)،
+// فهذا النموذج يشتغل فورًا بدون أي خطوة سابقة.
+// هذه القناة (settings jsonb) هي نقطة التوسّع الطبيعية لبناء آلية تعديل منيو
+// أغنى مستقبلًا، بدل رفع قالب ZIP كامل جديد.
 // ============================================================
-async function loadTemplates() {
-  // RLS "staff reads active or builtin versions" يفلتر تلقائيًا: أدمن المطعم
-  // بيشوف بس النسخ active + المدمج (بلا أي شرط إضافي هون بالـFrontend).
-  const rows = unwrap(
-    await sb
-      .from("menu_templates")
-      .select("id, name, slug, template_versions(id, version, is_builtin, entry_file, storage_path, status, created_at, activated_at)")
-      .order("name")
-  );
-  TEMPLATES = rows.map((tpl) => ({
-    id: tpl.id,
-    name: tpl.name,
-    versions: (tpl.template_versions || []).map((v) => ({
-      ...v,
-      preview_url: v.is_builtin ? null : `${window.SUPABASE_URL}/storage/v1/object/public/templates/${v.storage_path}/${v.entry_file}`,
-    })),
-  }));
-  renderTemplateOptions();
-}
-
-function renderTemplateOptions() {
-  const box = $("#templateOptions");
-  const versions = TEMPLATES.flatMap((tpl) => tpl.versions.map((v) => ({ ...v, templateName: tpl.name })));
-  if (versions.length === 0) { box.innerHTML = `<div class="empty-note">لا توجد قوالب متاحة بعد</div>`; return; }
-  box.innerHTML = versions
-    .map(
-      (v) => `
-    <div class="template-option" data-select-version="${v.id}">
-      <h4>${escapeHtml(v.templateName)}</h4>
-      <div class="meta">v${escapeHtml(v.version)} ${v.is_builtin ? "· مدمج" : ""}</div>
-      ${v.preview_url ? `<a class="btn btn-ghost btn-sm" style="margin-top:0.6rem;" href="${v.preview_url}" target="_blank">فتح الملف الخام ↗</a>` : ""}
-    </div>`
-    )
-    .join("");
-
-  $$("[data-select-version]", box).forEach((el) => {
-    el.addEventListener("click", async () => {
-      try {
-        await callRpc("rpc_select_menu_template", {
-          p_restaurant_id: CURRENT_ADMIN.restaurantId,
-          p_template_version_id: Number(el.dataset.selectVersion),
-        });
-        showGlobalMsg("تم تفعيل القالب — افتح رابط أي طاولة لمعاينته ببيانات مطعمك الفعلية", "success");
-        await loadMenuTemplateState();
-      } catch (err) { showGlobalMsg(err.message, "error"); }
-    });
-  });
-}
-
-async function loadMenuTemplateState() {
+async function loadMenuSettings() {
   const currentRow = unwrap(
     await sb
       .from("restaurant_menu_templates")
-      .select("template_version_id, settings, activated_at, template_versions(version, is_builtin, menu_templates(name))")
+      .select("settings")
       .eq("restaurant_id", CURRENT_ADMIN.restaurantId)
       .eq("is_current", true)
       .maybeSingle()
   );
-  const historyRows = unwrap(
-    await sb
-      .from("restaurant_menu_templates")
-      .select("template_version_id, activated_at, deactivated_at, template_versions(version, menu_templates(name))")
-      .eq("restaurant_id", CURRENT_ADMIN.restaurantId)
-      .order("activated_at", { ascending: false })
-      .limit(20)
-  );
 
-  const box = $("#currentTemplateBox");
-  if (!currentRow) {
-    box.innerHTML = `<div class="empty-note">ما في قالب مفعّل صراحة — القالب الافتراضي المدمج شغّال تلقائيًا</div>`;
-  } else {
-    const tv = currentRow.template_versions;
-    box.innerHTML = `<strong>${escapeHtml(tv.menu_templates.name)}</strong> — v${escapeHtml(tv.version)}
-      ${tv.is_builtin ? "<span class=\"badge badge-gray\">مدمج</span>" : ""}
-      <div class="field-hint">مفعّل منذ ${new Date(currentRow.activated_at).toLocaleString("ar")}</div>`;
-
-    const settings = currentRow.settings || {};
-    const form = $("#templateSettingsForm");
-    $("[name=show_search]", form).checked = settings.show_search !== false;
-    $("[name=show_categories]", form).checked = settings.show_categories !== false;
-    $("[name=show_images]", form).checked = settings.show_images !== false;
-    $("[name=layout]", form).value = settings.layout || "grid";
-    $("[name=card_style]", form).value = settings.card_style || "default";
-  }
-
-  const historyBox = $("#templateHistory");
-  if (historyRows.length === 0) {
-    historyBox.innerHTML = `<div class="empty-note">لا يوجد سجل بعد</div>`;
-  } else {
-    historyBox.innerHTML = `<table class="data-table"><thead><tr><th>القالب</th><th>النسخة</th><th>من</th><th>إلى</th><th></th></tr></thead><tbody>
-      ${historyRows
-        .map(
-          (h) => `<tr>
-        <td>${escapeHtml(h.template_versions.menu_templates.name)}</td><td>v${escapeHtml(h.template_versions.version)}</td>
-        <td>${new Date(h.activated_at).toLocaleDateString("ar")}</td>
-        <td>${h.deactivated_at ? new Date(h.deactivated_at).toLocaleDateString("ar") : "الآن"}</td>
-        <td>${h.deactivated_at ? `<button class="btn btn-ghost btn-sm" data-rollback="${h.template_version_id}">استرجاع (Rollback)</button>` : ""}</td>
-      </tr>`
-        )
-        .join("")}
-    </tbody></table>`;
-
-    $$("[data-rollback]", historyBox).forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        if (!confirm("استرجاع هذه النسخة القديمة كقالب حالي؟")) return;
-        try {
-          await callRpc("rpc_select_menu_template", {
-            p_restaurant_id: CURRENT_ADMIN.restaurantId,
-            p_template_version_id: Number(btn.dataset.rollback),
-          });
-          showGlobalMsg("تم الاسترجاع", "success");
-          await loadMenuTemplateState();
-        } catch (err) { showGlobalMsg(err.message, "error"); }
-      });
-    });
-  }
+  const settings = currentRow?.settings || {};
+  const form = $("#templateSettingsForm");
+  $("[name=show_search]", form).checked = settings.show_search !== false;
+  $("[name=show_categories]", form).checked = settings.show_categories !== false;
+  $("[name=show_images]", form).checked = settings.show_images !== false;
+  $("[name=layout]", form).value = settings.layout || "grid";
+  $("[name=card_style]", form).value = settings.card_style || "default";
 }
 
 $("#templateSettingsForm").addEventListener("submit", async (e) => {
