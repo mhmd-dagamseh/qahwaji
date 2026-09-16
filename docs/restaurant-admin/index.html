@@ -6,7 +6,7 @@
 <title>لوحة تحكم المطعم | قهوجي</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;700;800;900&family=Changa:wght@400;500;700;800&family=Reem+Kufi:wght@400;500;600;700&family=Markazi+Text:wght@400;500;600;700&family=Amiri:wght@400;700&family=Almarai:wght@400;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Noto+Kufi+Arabic:wght@400;500;700&family=Readex+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="../assets/supabase-config.js"></script>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
@@ -47,6 +47,13 @@
   .checkbox-row { display:flex; align-items:center; gap:0.5rem; margin-bottom:0.8rem; }
   .checkbox-row input { width:auto; }
   .checkbox-row label { margin:0; font-weight:700; font-size:0.88rem; }
+
+  .brand-preview { border:2px dashed var(--line); border-radius:12px; padding:1rem; margin-bottom:1.1rem; }
+  .brand-preview-card { border:2.5px solid var(--preview-ink, var(--ink)); border-radius:14px; padding:1rem 1.1rem;
+    background:var(--preview-paper, var(--paper)); color:var(--preview-ink, var(--ink)); max-width:280px; }
+  .brand-preview-card h4 { font-family: var(--preview-font-display, var(--font-display)); font-size:1.25rem; margin-bottom:0.4rem; font-weight:400; }
+  .brand-preview-card p { font-family: var(--preview-font-body, var(--font-body)); font-size:0.85rem; line-height:1.5; margin-bottom:0.6rem; }
+  .brand-preview-price { font-family: var(--preview-font-body, var(--font-body)); font-weight:800; font-size:0.95rem; color:var(--preview-primary, var(--red)); }
 
   .btn { display:inline-flex; align-items:center; justify-content:center; gap:0.5rem; padding:0.8rem 1.4rem; font-weight:800; font-size:0.9rem; border-radius:10px; border:2.5px solid var(--ink); cursor:pointer; transition:all 0.15s ease; text-decoration:none; }
   .btn:active { transform:translate(3px,3px); box-shadow:none !important; }
@@ -89,6 +96,11 @@
 
   .url-box { display:flex; gap:0.5rem; align-items:center; background:var(--paper-warm); border:2px dashed var(--line); border-radius:10px; padding:0.5rem 0.7rem; font-size:0.78rem; direction:ltr; overflow-x:auto; white-space:nowrap; }
 
+  .template-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
+  .template-option { border:2.5px solid var(--ink); border-radius:14px; padding:1rem; cursor:pointer; background:white; }
+  .template-option.selected { background:var(--paper-warm); box-shadow:var(--hard-sm); }
+  .template-option h4 { font-size:1rem; margin-bottom:0.3rem; }
+  .template-option .meta { font-size:0.75rem; color:var(--ink-soft); font-weight:600; }
 
   .logo-preview { width:64px; height:64px; border-radius:12px; border:2px solid var(--ink); object-fit:cover; background:var(--paper-warm); }
 </style>
@@ -123,7 +135,7 @@
       <button class="tab-btn active" data-tab="branding">البراند</button>
       <button class="tab-btn" data-tab="products">المنتجات</button>
       <button class="tab-btn" data-tab="tables">الطاولات (NFC)</button>
-      <button class="tab-btn" data-tab="template">إعدادات المنيو</button>
+      <button class="tab-btn" data-tab="template">قالب المنيو</button>
     </nav>
 
     <main>
@@ -145,6 +157,42 @@
               <div class="field"><label>اللون الأساسي (Primary)</label><input type="color" name="primary"></div>
               <div class="field"><label>اللون الثانوي (Secondary)</label><input type="color" name="secondary"></div>
               <div class="field"><label>لون التمييز (Accent)</label><input type="color" name="accent"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>لون خلفية المنيو</label><input type="color" name="background"></div>
+              <div class="field"><label>لون النص</label><input type="color" name="text_color"></div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>خط العناوين</label>
+                <select name="font_display">
+                  <option value="Lalezar">Lalezar (افتراضي)</option>
+                  <option value="Cairo">Cairo</option>
+                  <option value="Changa">Changa</option>
+                  <option value="Reem Kufi">Reem Kufi</option>
+                  <option value="Markazi Text">Markazi Text</option>
+                  <option value="Amiri">Amiri</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>خط النصوص</label>
+                <select name="font_body">
+                  <option value="Tajawal">Tajawal (افتراضي)</option>
+                  <option value="Cairo">Cairo</option>
+                  <option value="Almarai">Almarai</option>
+                  <option value="IBM Plex Sans Arabic">IBM Plex Sans Arabic</option>
+                  <option value="Noto Kufi Arabic">Noto Kufi Arabic</option>
+                  <option value="Readex Pro">Readex Pro</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-hint" style="margin-bottom:0.9rem;">المعاينة تحت بتتحدّث فورًا وقت التغيير — الحفظ بيطبّقها على منيو الزبائن.</div>
+            <div id="brandPreview" class="brand-preview">
+              <div class="brand-preview-card">
+                <h4 id="previewTitle">اسم المطعم</h4>
+                <p id="previewBody">وصف قصير للمنتج أو المطعم يظهر هون بنفس الخط المختار.</p>
+                <span id="previewPrice" class="brand-preview-price">2.50 د.أ</span>
+              </div>
             </div>
             <button class="btn btn-primary" type="submit">حفظ البراند</button>
           </form>
@@ -194,12 +242,16 @@
         </div>
       </section>
 
-      <!-- ===== إعدادات المنيو =====
-           تبويب "قالب المنيو" (اختيار قالب / rollback) أُزيل عمدًا — النظام يعمل
-           الآن على قالب منيو واحد مدمج فقط لكل المطاعم (راجع
-           backend/db/phase5-single-template.sql). بقيت فقط إعدادات عرض المنيو،
-           وهي نقطة التوسّع المتاحة لتطوير آلية تعديل منيو أغنى لاحقًا. -->
+      <!-- ===== قالب المنيو ===== -->
       <section id="tab-template" class="hidden">
+        <div class="card">
+          <h3>القالب الحالي</h3>
+          <div id="currentTemplateBox"></div>
+        </div>
+        <div class="card">
+          <h3>اختيار قالب</h3>
+          <div id="templateOptions" class="template-grid"></div>
+        </div>
         <div class="card">
           <h3>إعدادات عرض المنيو</h3>
           <form id="templateSettingsForm">
@@ -216,6 +268,10 @@
             </div>
             <button class="btn btn-primary" type="submit">حفظ الإعدادات</button>
           </form>
+        </div>
+        <div class="card">
+          <h3>السجل (Rollback)</h3>
+          <div id="templateHistory"></div>
         </div>
       </section>
     </main>
@@ -237,6 +293,7 @@ const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, 
 
 let CURRENT_ADMIN = null; // { id, email, role, restaurantId, restaurantName }
 let RESTAURANT = null;
+let TEMPLATES = [];
 
 const $ = (sel, root) => (root || document).querySelector(sel);
 const $$ = (sel, root) => [...(root || document).querySelectorAll(sel)];
@@ -326,30 +383,63 @@ $$(".tab-btn").forEach((btn) => {
 });
 
 async function loadAll() {
-  await Promise.all([loadRestaurant(), loadProducts(), loadTables(), loadMenuSettings()]);
+  await Promise.all([loadRestaurant(), loadProducts(), loadTables(), loadTemplates(), loadMenuTemplateState()]);
 }
 
 // ============================================================
 // البراند
 // ============================================================
+function currentBrandFormValues() {
+  const form = $("#brandingForm");
+  return {
+    primary: $("[name=primary]", form).value,
+    secondary: $("[name=secondary]", form).value,
+    accent: $("[name=accent]", form).value,
+    background: $("[name=background]", form).value,
+    text_color: $("[name=text_color]", form).value,
+    font_display: $("[name=font_display]", form).value,
+    font_body: $("[name=font_body]", form).value,
+  };
+}
+
+// معاينة حيّة — بتتحدّث فورًا على كل تغيير بالفورم، قبل الحفظ حتى
+function updateBrandPreview() {
+  const v = currentBrandFormValues();
+  const box = $("#brandPreview");
+  box.style.setProperty("--preview-primary", v.primary);
+  box.style.setProperty("--preview-paper", v.background);
+  box.style.setProperty("--preview-ink", v.text_color);
+  box.style.setProperty("--preview-font-display", `'${v.font_display}', sans-serif`);
+  box.style.setProperty("--preview-font-body", `'${v.font_body}', sans-serif`);
+}
+$("#brandingForm").addEventListener("input", updateBrandPreview);
+
 async function loadRestaurant() {
   RESTAURANT = unwrap(await sb.from("restaurants").select("*").eq("id", CURRENT_ADMIN.restaurantId).single());
   const colors = RESTAURANT.brand_colors || {};
-  $("[name=primary]", $("#brandingForm")).value = colors.primary || "#ff431a";
-  $("[name=secondary]", $("#brandingForm")).value = colors.secondary || "#1c1006";
-  $("[name=accent]", $("#brandingForm")).value = colors.accent || "#ffc229";
+  const form = $("#brandingForm");
+  $("[name=primary]", form).value = colors.primary || "#ff431a";
+  $("[name=secondary]", form).value = colors.secondary || "#1c1006";
+  $("[name=accent]", form).value = colors.accent || "#ffc229";
+  $("[name=background]", form).value = colors.background || "#fff8ec";
+  $("[name=text_color]", form).value = colors.text_color || "#1c1006";
+  $("[name=font_display]", form).value = colors.font_display || "Lalezar";
+  $("[name=font_body]", form).value = colors.font_body || "Tajawal";
   $("#logoPreview").src = RESTAURANT.logo_url || "";
+  updateBrandPreview();
 }
 
 $("#brandingForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const form = new FormData(e.target);
   try {
+    // نبعت كل حقول brand_colors سوا — الـRPC بيستبدل brand_colors كامل
+    // (coalesce على العمود كله مش على كل مفتاح لحاله)، فلازم نرسل كل
+    // القيم مع بعض وإلا بتنمسح القيم يلي مش موجودة بالفورم.
     RESTAURANT = await callRpc("rpc_update_restaurant_branding", {
       p_restaurant_id: CURRENT_ADMIN.restaurantId,
-      p_brand_colors: { primary: form.get("primary"), secondary: form.get("secondary"), accent: form.get("accent") },
+      p_brand_colors: currentBrandFormValues(),
     });
-    showGlobalMsg("تم حفظ البراند", "success");
+    showGlobalMsg("تم حفظ البراند — افتح رابط أي طاولة لمعاينة الشكل الجديد", "success");
   } catch (err) {
     showGlobalMsg(err.message, "error");
   }
@@ -425,6 +515,16 @@ async function loadProducts() {
     input.addEventListener("change", async (e) => {
       const file = e.target.files[0];
       if (!file) return;
+      // فحص سريع قبل محاولة الرفع: سياسة storage.objects بتسمح بالكتابة
+      // على bucket "restaurant-assets" فقط لصاحب المطعم (role = owner) —
+      // لو الحساب المسجل دخول فيه "cashier" الرفع رح يترفض دايمًا بتصميم
+      // مقصود (كاشير ما بيعدّل منتجات)، مش خلل. نطلعله رسالة واضحة بدل
+      // رسالة Postgres التقنية.
+      if (CURRENT_ADMIN.role !== "owner") {
+        showGlobalMsg("رفع صور المنتجات متاح لحساب المالك (owner) فقط — سجّل دخول بحساب المالك.", "error");
+        input.value = "";
+        return;
+      }
       try {
         const productId = input.dataset.uploadImage;
         const ext = (file.name.split(".").pop() || "png").toLowerCase();
@@ -432,7 +532,20 @@ async function loadProducts() {
         const { error: uploadError } = await sb.storage
           .from("restaurant-assets")
           .upload(path, file, { contentType: file.type || "image/png", upsert: true });
-        if (uploadError) throw new Error(uploadError.message);
+        if (uploadError) {
+          // "new row violates row-level security policy" التقنية —
+          // بأغلب الحالات معناها الحساب مش مربوط صح بجدول restaurant_admins
+          // (نفس علة phase 5) أو سياسات storage.objects لسا ما انطبقت على
+          // قاعدة البيانات الفعلية. شغّل rpc_whoami من الكونسول للتأكد:
+          //   await sb.rpc('rpc_whoami').then(r => console.log(r.data))
+          if (/row-level security/i.test(uploadError.message)) {
+            throw new Error(
+              "الرفع مرفوض من سياسة الحماية (RLS) — تأكد إنك مسجل دخول بحساب owner مربوط فعليًا بهذا المطعم. " +
+              "افتح console المتصفح ونفّذ: await sb.rpc('rpc_whoami').then(r=>console.log(r.data)) للتشخيص."
+            );
+          }
+          throw new Error(uploadError.message);
+        }
 
         const { data: publicUrlData } = sb.storage.from("restaurant-assets").getPublicUrl(path);
         await callRpc("rpc_upsert_product", {
@@ -557,32 +670,124 @@ $("#tableForm").addEventListener("submit", async (e) => {
 });
 
 // ============================================================
-// إعدادات المنيو
-// النظام يعمل على قالب منيو واحد مدمج فقط لكل المطاعم (راجع
-// backend/db/phase5-single-template.sql) — لا اختيار/تبديل/rollback قوالب
-// بعد الآن. كل مطعم مضمون له سطر restaurant_menu_templates حالي جاهز تلقائيًا
-// (عند الإنشاء عبر rpc_create_restaurant، أو عبر الترحيل لو كان مطعم قديم)،
-// فهذا النموذج يشتغل فورًا بدون أي خطوة سابقة.
-// هذه القناة (settings jsonb) هي نقطة التوسّع الطبيعية لبناء آلية تعديل منيو
-// أغنى مستقبلًا، بدل رفع قالب ZIP كامل جديد.
+// قالب المنيو
 // ============================================================
-async function loadMenuSettings() {
+async function loadTemplates() {
+  // RLS "staff reads active or builtin versions" يفلتر تلقائيًا: أدمن المطعم
+  // بيشوف بس النسخ active + المدمج (بلا أي شرط إضافي هون بالـFrontend).
+  const rows = unwrap(
+    await sb
+      .from("menu_templates")
+      .select("id, name, slug, template_versions(id, version, is_builtin, entry_file, storage_path, status, created_at, activated_at)")
+      .order("name")
+  );
+  TEMPLATES = rows.map((tpl) => ({
+    id: tpl.id,
+    name: tpl.name,
+    versions: (tpl.template_versions || []).map((v) => ({
+      ...v,
+      preview_url: v.is_builtin ? null : `${window.SUPABASE_URL}/storage/v1/object/public/templates/${v.storage_path}/${v.entry_file}`,
+    })),
+  }));
+  renderTemplateOptions();
+}
+
+function renderTemplateOptions() {
+  const box = $("#templateOptions");
+  const versions = TEMPLATES.flatMap((tpl) => tpl.versions.map((v) => ({ ...v, templateName: tpl.name })));
+  if (versions.length === 0) { box.innerHTML = `<div class="empty-note">لا توجد قوالب متاحة بعد</div>`; return; }
+  box.innerHTML = versions
+    .map(
+      (v) => `
+    <div class="template-option" data-select-version="${v.id}">
+      <h4>${escapeHtml(v.templateName)}</h4>
+      <div class="meta">v${escapeHtml(v.version)} ${v.is_builtin ? "· مدمج" : ""}</div>
+      ${v.preview_url ? `<a class="btn btn-ghost btn-sm" style="margin-top:0.6rem;" href="${v.preview_url}" target="_blank">فتح الملف الخام ↗</a>` : ""}
+    </div>`
+    )
+    .join("");
+
+  $$("[data-select-version]", box).forEach((el) => {
+    el.addEventListener("click", async () => {
+      try {
+        await callRpc("rpc_select_menu_template", {
+          p_restaurant_id: CURRENT_ADMIN.restaurantId,
+          p_template_version_id: Number(el.dataset.selectVersion),
+        });
+        showGlobalMsg("تم تفعيل القالب — افتح رابط أي طاولة لمعاينته ببيانات مطعمك الفعلية", "success");
+        await loadMenuTemplateState();
+      } catch (err) { showGlobalMsg(err.message, "error"); }
+    });
+  });
+}
+
+async function loadMenuTemplateState() {
   const currentRow = unwrap(
     await sb
       .from("restaurant_menu_templates")
-      .select("settings")
+      .select("template_version_id, settings, activated_at, template_versions(version, is_builtin, menu_templates(name))")
       .eq("restaurant_id", CURRENT_ADMIN.restaurantId)
       .eq("is_current", true)
       .maybeSingle()
   );
+  const historyRows = unwrap(
+    await sb
+      .from("restaurant_menu_templates")
+      .select("template_version_id, activated_at, deactivated_at, template_versions(version, menu_templates(name))")
+      .eq("restaurant_id", CURRENT_ADMIN.restaurantId)
+      .order("activated_at", { ascending: false })
+      .limit(20)
+  );
 
-  const settings = currentRow?.settings || {};
-  const form = $("#templateSettingsForm");
-  $("[name=show_search]", form).checked = settings.show_search !== false;
-  $("[name=show_categories]", form).checked = settings.show_categories !== false;
-  $("[name=show_images]", form).checked = settings.show_images !== false;
-  $("[name=layout]", form).value = settings.layout || "grid";
-  $("[name=card_style]", form).value = settings.card_style || "default";
+  const box = $("#currentTemplateBox");
+  if (!currentRow) {
+    box.innerHTML = `<div class="empty-note">ما في قالب مفعّل صراحة — القالب الافتراضي المدمج شغّال تلقائيًا</div>`;
+  } else {
+    const tv = currentRow.template_versions;
+    box.innerHTML = `<strong>${escapeHtml(tv.menu_templates.name)}</strong> — v${escapeHtml(tv.version)}
+      ${tv.is_builtin ? "<span class=\"badge badge-gray\">مدمج</span>" : ""}
+      <div class="field-hint">مفعّل منذ ${new Date(currentRow.activated_at).toLocaleString("ar")}</div>`;
+
+    const settings = currentRow.settings || {};
+    const form = $("#templateSettingsForm");
+    $("[name=show_search]", form).checked = settings.show_search !== false;
+    $("[name=show_categories]", form).checked = settings.show_categories !== false;
+    $("[name=show_images]", form).checked = settings.show_images !== false;
+    $("[name=layout]", form).value = settings.layout || "grid";
+    $("[name=card_style]", form).value = settings.card_style || "default";
+  }
+
+  const historyBox = $("#templateHistory");
+  if (historyRows.length === 0) {
+    historyBox.innerHTML = `<div class="empty-note">لا يوجد سجل بعد</div>`;
+  } else {
+    historyBox.innerHTML = `<table class="data-table"><thead><tr><th>القالب</th><th>النسخة</th><th>من</th><th>إلى</th><th></th></tr></thead><tbody>
+      ${historyRows
+        .map(
+          (h) => `<tr>
+        <td>${escapeHtml(h.template_versions.menu_templates.name)}</td><td>v${escapeHtml(h.template_versions.version)}</td>
+        <td>${new Date(h.activated_at).toLocaleDateString("ar")}</td>
+        <td>${h.deactivated_at ? new Date(h.deactivated_at).toLocaleDateString("ar") : "الآن"}</td>
+        <td>${h.deactivated_at ? `<button class="btn btn-ghost btn-sm" data-rollback="${h.template_version_id}">استرجاع (Rollback)</button>` : ""}</td>
+      </tr>`
+        )
+        .join("")}
+    </tbody></table>`;
+
+    $$("[data-rollback]", historyBox).forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("استرجاع هذه النسخة القديمة كقالب حالي؟")) return;
+        try {
+          await callRpc("rpc_select_menu_template", {
+            p_restaurant_id: CURRENT_ADMIN.restaurantId,
+            p_template_version_id: Number(btn.dataset.rollback),
+          });
+          showGlobalMsg("تم الاسترجاع", "success");
+          await loadMenuTemplateState();
+        } catch (err) { showGlobalMsg(err.message, "error"); }
+      });
+    });
+  }
 }
 
 $("#templateSettingsForm").addEventListener("submit", async (e) => {
