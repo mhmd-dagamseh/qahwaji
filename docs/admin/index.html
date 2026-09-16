@@ -184,8 +184,10 @@
   <div class="tabs">
     <button class="tab-btn active" data-tab="restaurants">المطاعم</button>
     <button class="tab-btn" data-tab="plans">الباقات</button>
-    <button class="tab-btn" data-tab="templates">القوالب</button>
   </div>
+  <!-- تبويب "القوالب" أُزيل عمدًا: النظام يعمل الآن على قالب منيو واحد مدمج فقط
+       (راجع backend/db/phase5-single-template.sql). تخصيص شكل المنيو صار حصرًا
+       من لوحة تحكم المطعم → تبويب "إعدادات المنيو". -->
 
   <main>
     <div id="globalError"></div>
@@ -232,19 +234,6 @@
       </div>
     </section>
 
-    <!-- ---------- تبويب القوالب (Phase 2) ---------- -->
-    <section id="tab-templates" class="hidden">
-      <div class="panel-head">
-        <div>
-          <h2>قوالب المنيو</h2>
-          <p>ارفع، فعّل، أو ألغِ تفعيل قوالب Customer Menu. القالب المدمج (Built-in) شغّال دائمًا كخيار احتياطي.</p>
-        </div>
-        <button class="btn btn-primary" id="openUploadTemplate">+ رفع قالب (ZIP)</button>
-      </div>
-      <div class="plans-grid" id="templatesGrid">
-        <div class="spinner-text">جاري التحميل...</div>
-      </div>
-    </section>
   </main>
 </div>
 
@@ -356,7 +345,6 @@ function enterApp() {
   $("#whoAmI").textContent = CURRENT_ADMIN?.email || "";
   loadRestaurants();
   loadPlans();
-  loadTemplates();
 }
 
 // ---------------------------------------------------------------------
@@ -647,138 +635,12 @@ function openEditPlanModal(plan) {
 }
 
 // ---------------------------------------------------------------------
-// القوالب (Phase 2)
+// تبويب "القوالب" ومنطقه (رفع/تفعيل/إلغاء تفعيل قوالب ZIP) أُزيلا عمدًا —
+// النظام يعمل الآن على قالب منيو واحد مدمج فقط (راجع
+// backend/db/phase5-single-template.sql). تخصيص شكل المنيو لكل مطعم صار
+// حصرًا من لوحة تحكم المطعم (restaurant-admin) → تبويب "إعدادات المنيو"،
+// عبر rpc_update_menu_template_settings.
 // ---------------------------------------------------------------------
-let TEMPLATES_CACHE = [];
-
-async function loadTemplates() {
-  const grid = $("#templatesGrid");
-  try {
-    // RLS "super admin reads all template versions" — يشوف كل الحالات هون
-    // (installed/active/rejected)، بخلاف لوحة صاحب المطعم اللي بتشوف active+مدمج فقط.
-    const rows = unwrap(
-      await sb
-        .from("menu_templates")
-        .select("id, name, template_versions(id, version, is_builtin, entry_file, storage_path, status, manifest, created_at, activated_at)")
-        .order("name")
-    );
-    TEMPLATES_CACHE = rows.map((tpl) => ({
-      id: tpl.id,
-      name: tpl.name,
-      versions: (tpl.template_versions || []).map((v) => ({
-        ...v,
-        preview_url: v.is_builtin ? null : `${window.SUPABASE_URL}/storage/v1/object/public/templates/${v.storage_path}/${v.entry_file}`,
-      })),
-    }));
-    const versions = TEMPLATES_CACHE.flatMap((tpl) => tpl.versions.map((v) => ({ ...v, templateName: tpl.name, templateId: tpl.id })));
-    if (!versions.length) {
-      grid.innerHTML = `<div class="empty-state">لا توجد قوالب بعد</div>`;
-      return;
-    }
-    grid.innerHTML = versions.map(renderTemplateCard).join("");
-    bindTemplateActions();
-  } catch (err) {
-    grid.innerHTML = "";
-    showError($("#globalError"), err.message);
-  }
-}
-
-function templateBadge(v) {
-  if (v.is_builtin) return `<span class="badge badge-active">مدمج</span>`;
-  if (v.status === "active") return `<span class="badge badge-active">مفعّل للاختيار</span>`;
-  if (v.status === "rejected") return `<span class="badge badge-suspended">مرفوض</span>`;
-  return `<span class="badge badge-cancelled">مُنصّب (غير معروض)</span>`;
-}
-
-function renderTemplateCard(v) {
-  return `
-    <div class="plan-card" data-template-id="${v.templateId}" data-version-id="${v.id}">
-      <h3>${escapeHtml(v.templateName)}</h3>
-      <div class="plan-price">v${escapeHtml(v.version)} — ${templateBadge(v)}</div>
-      <div class="plan-meta">${(v.manifest?.supports || []).join(" · ") || "—"}</div>
-      <div class="plan-actions">
-        ${v.preview_url ? `<a class="btn btn-sm btn-ghost" href="${v.preview_url}" target="_blank">معاينة ↗</a>` : ""}
-        ${!v.is_builtin && v.status !== "active" ? `<button class="btn btn-sm btn-primary act-activate-template">تفعيل</button>` : ""}
-        ${!v.is_builtin && v.status === "active" ? `<button class="btn btn-sm btn-ghost act-deactivate-template">إلغاء التفعيل</button>` : ""}
-      </div>
-    </div>`;
-}
-
-function bindTemplateActions() {
-  $$(".act-activate-template").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const card = btn.closest(".plan-card");
-      try {
-        await callRpc("rpc_activate_template_version", {
-          p_template_id: Number(card.dataset.templateId),
-          p_version_id: Number(card.dataset.versionId),
-        });
-        loadTemplates();
-      } catch (err) {
-        showError($("#globalError"), err.message);
-      }
-    });
-  });
-  $$(".act-deactivate-template").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const card = btn.closest(".plan-card");
-      try {
-        await callRpc("rpc_deactivate_template_version", {
-          p_template_id: Number(card.dataset.templateId),
-          p_version_id: Number(card.dataset.versionId),
-        });
-        loadTemplates();
-      } catch (err) {
-        showError($("#globalError"), err.message);
-      }
-    });
-  });
-}
-
-// ---- نافذة رفع قالب جديد ----
-$("#openUploadTemplate").addEventListener("click", () => {
-  openModal(`
-    <h3>رفع قالب جديد</h3>
-    <div id="uploadTemplateError"></div>
-    <p style="font-size:0.85rem; color:var(--ink-soft); font-weight:600; margin-bottom:1rem;">
-      ملف ZIP لازم يحتوي manifest.json صالح بالجذر + entry file موجود فعليًا.
-      يتفحص أمنيًا (مسارات آمنة، بلا أسرار/سكربتات) قبل أي تنصيب.
-    </p>
-    <form id="uploadTemplateForm">
-      <div class="field"><label>ملف القالب (ZIP)</label><input type="file" name="zip" accept=".zip" required></div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-ghost" data-close>إلغاء</button>
-        <button type="submit" class="btn btn-primary">رفع وفحص</button>
-      </div>
-    </form>
-  `);
-
-  $("#uploadTemplateForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const errBox = $("#uploadTemplateError");
-    clearError(errBox);
-    const submitBtn = e.target.querySelector("button[type=submit]");
-    submitBtn.disabled = true;
-    submitBtn.textContent = "جاري الرفع والفحص...";
-    try {
-      const fd = new FormData(e.target);
-      const file = fd.get("zip");
-      if (!file || !file.size) throw new Error("اختر ملف ZIP أولاً");
-      // upload-template Edge Function: فحص أمني كامل (مسارات/امتدادات/أحجام/manifest)
-      // ثم رفع فعلي لـSupabase Storage وتسجيل بجداول menu_templates/template_versions
-      // بصلاحية service-role — كل هذا غير ممكن من الفرونت إند مباشرة (bucket templates
-      // مقفول كليًا عن anon/authenticated، راجع phase3-supabase-native.sql § 6).
-      // الملف يُرسل كبايتات خام (Blob) — بلا multipart، تبسيطًا.
-      await callFunction("upload-template", file);
-      closeModal();
-      loadTemplates();
-    } catch (err) {
-      showError(errBox, err.message);
-      submitBtn.disabled = false;
-      submitBtn.textContent = "رفع وفحص";
-    }
-  });
-});
 
 // ---------------------------------------------------------------------
 // نوافذ منبثقة عامة
