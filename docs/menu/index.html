@@ -7,7 +7,9 @@
 <meta name="theme-color" content="#fff8ec">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@400;500;700;800;900&family=Changa:wght@400;500;700;800&family=Reem+Kufi:wght@400;500;600;700&family=Markazi+Text:wght@400;500;600;700&family=Amiri:wght@400;700&family=Almarai:wght@400;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Noto+Kufi+Arabic:wght@400;500;700&family=Readex+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- كل خطوط قائمة الاختيار بلوحة تحكم المطعم (restaurant-admin) محمّلة هون مسبقًا
+     بطلب واحد — عشان أي مطعم يختار أي خط منها يشتغل فورًا بدون تحميل إضافي وقت التشغيل. -->
 <script src="../assets/supabase-config.js"></script>
 <style>
   :root {
@@ -513,6 +515,22 @@
     if (colors.primary) root.style.setProperty("--brand-primary", colors.primary);
     if (colors.secondary) root.style.setProperty("--brand-secondary", colors.secondary);
     if (colors.accent) root.style.setProperty("--brand-accent", colors.accent);
+    // ميزات تصميم إضافية (Phase 7): خلفية المنيو، لون النص، وخط العناوين/النصوص —
+    // كلها اختيارية، القيم الافتراضية بـ:root بتضل شغالة لو المطعم ما اختار شي.
+    if (colors.background) {
+      root.style.setProperty("--paper", colors.background);
+      // مشتقة من الخلفية المختارة عشان باقي العناصر (خلفية صور المنتجات،
+      // الخطوط الفاصلة) تضل متناسقة بدل ما تضل بلون قديم ثابت لا علاقة له
+      // بالخلفية الجديدة.
+      root.style.setProperty("--paper-warm", `color-mix(in srgb, ${colors.background} 88%, black)`);
+      root.style.setProperty("--line", `color-mix(in srgb, ${colors.background} 75%, black)`);
+    }
+    if (colors.text_color) {
+      root.style.setProperty("--ink", colors.text_color);
+      root.style.setProperty("--ink-soft", `color-mix(in srgb, ${colors.text_color} 65%, transparent)`);
+    }
+    if (colors.font_display) root.style.setProperty("--font-display", `'${colors.font_display}', sans-serif`);
+    if (colors.font_body) root.style.setProperty("--font-body", `'${colors.font_body}', sans-serif`);
 
     document.title = restaurant.name;
     document.getElementById("restaurantName").textContent = restaurant.name;
