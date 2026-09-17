@@ -136,6 +136,7 @@
       <button class="tab-btn" data-tab="products">المنتجات</button>
       <button class="tab-btn" data-tab="tables">الطاولات (NFC)</button>
       <button class="tab-btn" data-tab="template">قالب المنيو</button>
+      <button class="tab-btn hidden" data-tab="team" id="teamTabBtn">الفريق</button>
     </nav>
 
     <main>
@@ -274,6 +275,27 @@
           <div id="templateHistory"></div>
         </div>
       </section>
+
+      <!-- ===== الفريق (owner فقط) ===== -->
+      <section id="tab-team" class="hidden">
+        <div class="card">
+          <h3>إضافة كاشير</h3>
+          <div class="field-hint" style="margin-bottom:0.9rem;">
+            أنشئ حساب دخول مستقل لكاشير مطعمك — بريد وكلمة مرور خاصين فيه، يقدر يسجّل دخول فيهم مباشرة على لوحة الكاشير (بدون أي وصول للبراند أو المنتجات أو الإعدادات).
+          </div>
+          <form id="staffForm">
+            <div class="field-row">
+              <div class="field"><label>بريد الكاشير</label><input type="email" name="staff_email" required></div>
+              <div class="field"><label>كلمة المرور</label><input type="password" name="staff_password" required minlength="8"></div>
+            </div>
+            <button class="btn btn-primary" type="submit">إضافة كاشير</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3>الفريق الحالي</h3>
+          <div id="teamList"></div>
+        </div>
+      </section>
     </main>
   </div>
 
@@ -321,6 +343,22 @@ function unwrap({ data, error }) {
   return data;
 }
 
+// نداء Edge Function عام (نفس helper الموجود بلوحة السوبر أدمن) — يُستخدم هون
+// فقط لـ add-restaurant-staff (إنشاء مستخدم Auth حقيقي يتطلب service-role،
+// ممنوع مباشرة من الفرونت إند).
+async function callFunction(name, body, extraHeaders) {
+  const { data, error } = await sb.functions.invoke(name, { body, headers: extraHeaders });
+  if (error) {
+    let message = error.message;
+    try {
+      const errBody = await error.context.json();
+      if (errBody?.error?.message) message = errBody.error.message;
+    } catch (_) { /* نكتفي برسالة supabase-js الافتراضية */ }
+    throw new Error(message);
+  }
+  return data;
+}
+
 // ============================================================
 // تسجيل الدخول عبر Supabase Auth مباشرة
 // ============================================================
@@ -356,6 +394,8 @@ $("#loginForm").addEventListener("submit", async (e) => {
     };
 
     $("#whoAmI").textContent = `${CURRENT_ADMIN.restaurantName} · ${CURRENT_ADMIN.email} · ${CURRENT_ADMIN.role === "owner" ? "مالك" : "كاشير"}`;
+    // تبويب "الفريق" (إضافة/حذف كاشير) لصاحب المطعم فقط — الكاشير ما بيدير فريق
+    $("#teamTabBtn").classList.toggle("hidden", CURRENT_ADMIN.role !== "owner");
     $("#loginScreen").classList.add("hidden");
     $("#app").classList.remove("hidden");
     await loadAll();
@@ -383,7 +423,9 @@ $$(".tab-btn").forEach((btn) => {
 });
 
 async function loadAll() {
-  await Promise.all([loadRestaurant(), loadProducts(), loadTables(), loadTemplates(), loadMenuTemplateState()]);
+  const tasks = [loadRestaurant(), loadProducts(), loadTables(), loadTemplates(), loadMenuTemplateState()];
+  if (CURRENT_ADMIN.role === "owner") tasks.push(loadTeam());
+  await Promise.all(tasks);
 }
 
 // ============================================================
@@ -805,6 +847,65 @@ $("#templateSettingsForm").addEventListener("submit", async (e) => {
       },
     });
     showGlobalMsg("تم حفظ إعدادات العرض", "success");
+  } catch (err) { showGlobalMsg(err.message, "error"); }
+});
+
+// ============================================================
+// الفريق (owner فقط) — إضافة/عرض/حذف حسابات كاشير لهذا المطعم
+// ============================================================
+async function loadTeam() {
+  const box = $("#teamList");
+  if (!box) return;
+  let staff;
+  try {
+    staff = unwrap(
+      await sb.from("restaurant_admins")
+        .select("id, email, role, created_at")
+        .eq("restaurant_id", CURRENT_ADMIN.restaurantId)
+        .order("created_at")
+    );
+  } catch (err) {
+    box.innerHTML = `<div class="empty-note">تعذر تحميل الفريق: ${escapeHtml(err.message)}</div>`;
+    return;
+  }
+
+  box.innerHTML = `<table class="data-table"><thead><tr>
+      <th>البريد</th><th>الدور</th><th>مضاف منذ</th><th></th>
+    </tr></thead><tbody>${staff.map(teamRow).join("")}</tbody></table>`;
+
+  $$("[data-remove-staff]", box).forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("حذف حساب هذا الكاشير؟ لن يقدر يسجّل دخول بعدها.")) return;
+      try {
+        await callRpc("rpc_remove_restaurant_staff", { p_admin_id: Number(btn.dataset.removeStaff) });
+        await loadTeam();
+        showGlobalMsg("تم حذف الحساب", "success");
+      } catch (err) { showGlobalMsg(err.message, "error"); }
+    });
+  });
+}
+
+function teamRow(s) {
+  const isSelf = s.email === CURRENT_ADMIN.email;
+  return `<tr>
+    <td>${escapeHtml(s.email)}${isSelf ? " (أنت)" : ""}</td>
+    <td>${s.role === "owner" ? "مالك" : "كاشير"}</td>
+    <td>${new Date(s.created_at).toLocaleDateString("ar")}</td>
+    <td>${s.role === "cashier" ? `<button class="btn btn-ghost btn-sm" data-remove-staff="${s.id}">حذف</button>` : ""}</td>
+  </tr>`;
+}
+
+$("#staffForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData(e.target);
+  try {
+    // add-restaurant-staff Edge Function: تنشئ مستخدم Supabase Auth حقيقي
+    // للكاشير (يتطلب service-role) ثم تربطه بمطعمنا نحن تحديدًا — restaurant_id
+    // يُشتق بالكامل من جلستنا بالسيرفر، ما بنرسله من هون أصلًا.
+    await callFunction("add-restaurant-staff", Object.fromEntries(form.entries()));
+    e.target.reset();
+    await loadTeam();
+    showGlobalMsg("تمت إضافة الكاشير — بلّغه بالبريد وكلمة المرور ليسجّل دخول من لوحة الكاشير", "success");
   } catch (err) { showGlobalMsg(err.message, "error"); }
 });
 </script>
